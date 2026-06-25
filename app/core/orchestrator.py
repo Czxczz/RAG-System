@@ -23,6 +23,7 @@ from app.core.embeddings import EmbeddingService
 from app.core.ingestion import ingest_file
 from app.core.llm_router import LLMRouter
 from app.core.query_engine import QueryEngine
+from app.core.reranker import Reranker
 from app.core.registry import DocumentRecord, DocumentRegistry
 from app.core.vector_store import SearchHit, StoredChunk, VectorStore
 
@@ -64,12 +65,18 @@ class RAGOrchestrator:
         embeddings: EmbeddingService,
         store: VectorStore,
         registry: DocumentRegistry,
+        reranker: Reranker | None = None,
     ) -> None:
         self.settings = settings
         self.embeddings = embeddings
         self.store = store
         self.registry = registry
-        self.query_engine = QueryEngine(embeddings, store)
+        self.query_engine = QueryEngine(
+            settings,
+            embeddings,
+            store,
+            reranker=reranker if settings.rerank_enabled else None,
+        )
         self.llm = LLMRouter(settings)
 
     # ── Ingestion ────────────────────────────────────────────

@@ -56,7 +56,8 @@ app/
     ├── ingestion.py     # load → extract → clean → chunk
     ├── embeddings.py    # local (sentence-transformers) | OpenAI
     ├── vector_store.py  # FAISS index + persisted metadata
-    ├── query_engine.py  # retrieval (+ v2 rerank hook)
+    ├── query_engine.py  # retrieval + cross-encoder rerank
+    ├── reranker.py      # cross-encoder second-stage scoring
     ├── llm_router.py    # OpenAI / Gemini / Ollama / extractive fallback
     ├── registry.py      # document catalogue
     └── orchestrator.py  # the core brain
@@ -152,14 +153,23 @@ See [`.env.example`](.env.example). Key settings:
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
 | `LLM_PROVIDER` | `auto` | `auto` / `openai` / `gemini` / `ollama` / `extractive` |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | Chunking (characters) |
-| `TOP_K` | `5` | Chunks retrieved per query |
-| `MIN_SCORE` | `0.20` | Cosine threshold for "no context" |
+| `TOP_K` | `5` | Chunks sent to the LLM after reranking |
+| `MIN_SCORE` | `0.20` | Cosine threshold before reranking |
+| `RERANK_ENABLED` | `true` | Enable cross-encoder reranking |
+| `RETRIEVE_K` | `20` | FAISS candidate pool when reranking is on |
+| `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder model |
+
+Retrieval flow when reranking is enabled:
+
+```
+query → embed → FAISS top RETRIEVE_K → filter MIN_SCORE → rerank → top TOP_K → LLM
+```
 
 ---
 
 ## Roadmap (v2+)
 
-- [ ] Cross-encoder reranking (`query_engine.rerank` hook is ready)
+- [x] Cross-encoder reranking
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
 - [ ] Streaming responses

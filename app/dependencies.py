@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.core.embeddings import get_embedding_service
 from app.core.orchestrator import RAGOrchestrator
 from app.core.registry import DocumentRegistry
+from app.core.reranker import get_reranker
 from app.core.vector_store import VectorStore
 
 
@@ -24,9 +25,11 @@ def get_orchestrator() -> RAGOrchestrator:
         metadata_path=settings.metadata_path,
     )
     registry = DocumentRegistry(settings.documents_path)
+    reranker = get_reranker() if settings.rerank_enabled else None
     return RAGOrchestrator(
         settings=settings,
         embeddings=embeddings,
         store=store,
         registry=registry,
+        reranker=reranker,
     )

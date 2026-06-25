@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # ── Retrieval ────────────────────────────────────────────
     top_k: int = 5
     min_score: float = 0.20
+    rerank_enabled: bool = True
+    retrieve_k: int = 20  # FAISS pool size before cross-encoder rerank
+    rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # ── LLM Router ───────────────────────────────────────────
     # "auto" | "openai" | "gemini" | "ollama" | "extractive"
