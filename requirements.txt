@@ -1,0 +1,23 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# Vector store + math
+faiss-cpu==1.9.0.post1
+numpy==1.26.4
+
+# Local embeddings (privacy-first default)
+sentence-transformers==3.3.1
+
+# Document parsing
+pypdf==5.1.0
+
+# LLM providers
+openai==1.59.6          # cloud LLM + optional cloud embeddings
+httpx==0.28.1           # used to talk to local Ollama
+
+# Utilities
+python-dotenv==1.0.1
