@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # ── Embeddings ───────────────────────────────────────────
     embedding_provider: str = "local"  # "local" | "openai"
-    local_embedding_model: str = "all-MiniLM-L6-v2"
+    local_embedding_model: str = "BAAI/bge-small-en-v1.5"
     openai_embedding_model: str = "text-embedding-3-small"
 
     # ── Chunking ─────────────────────────────────────────────

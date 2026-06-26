@@ -1,0 +1,88 @@
+{
+  "dataset": "employee-handbook-smoke",
+  "mode": "auto",
+  "top_k": 5,
+  "num_cases": 4,
+  "precision_at_k": 0.55,
+  "recall_at_k": 0.75,
+  "hallucination_rate": 0.25,
+  "citation_accuracy": 1.0,
+  "answer_keyword_recall": 1.0,
+  "refusal_accuracy": 1.0,
+  "cases": [
+    {
+      "case_id": "annual-leave-days",
+      "query": "How many annual leave days?",
+      "answer": "The number of annual leave days an employee is entitled to depends on their years of service:\n*   Less than five (5) years in service: 14 days [1, 4]\n*   Five (5) to ten (10) years in service: 16 days [1, 4]\n*   Ten (10) years and above in service: 18 days [1, 4]\n\nAn employee with less than one (1) year of service is entitled to annual leave on a pro-rated basis [2]. Up to five (5) days of the current year's leave entitlement can be carried forward to the following year and must be utilized by June of that year [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.8,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 4,
+        "retrieved_total": 5
+      },
+      "notes": []
+    },
+    {
+      "case_id": "working-hours",
+      "query": "What are the working hours?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n[1] (source: EMPLOYEES HANDBOOK.pdf, p.38)\n8.3 Working Hours Monday to Friday: 8.30am – 6.00pm 8.4 Notice of Resignation Employment\nStatus\nManagement/Executive Non-Executive\nNotice (Or) Salary In -lieu\nof Notice\nNotice (Or) Salary In-lieu\nof Notice\nProbationary 1 Week 1 Week 1 Week 1 Week\nConfirmed 2 Months 2 Months 1 Month 1 Month\n\n[2] (source: EMPLOYEES HANDBOOK.pdf, p.17)\n1.14 Working Days/Hours\n Monday to Friday : 8.30am – 6.00pm 1.15 Lunch Hour\n Monday to Thursday : 12.45pm – 2.00pm\n Friday : 12.45pm – 2.00pm\n (Female Muslim & Non-Muslim employees)\n 12.45pm – 2.30pm\n (Male Muslim employees) 2.0 EMPLOYEE REMUNERATION 2.1 Salary Administration\nEmployment\nStatus\nManagement/Executive Non-Executive\nNotice (Or) Salary In -lieu\nof Notice\nNotice (Or) Salary In-lieu\nof Notice\nProbationary 1 Week 1 Week 1 Week 1 Week\nConfirmed 2 Months 2 Months 1 Month 1 Month\n\n[3] (source: EMPLOYEES HANDBOOK.pdf, p.1)\n1.13 Retirement Age 23\n 1.14 Working Days/Hours 23\n 1.15 Lunch Hour 23 2.0 Employee Remuneration 24\n 2.1 Salary Administration 24\n\n[4] (source: EMPLOYEES HANDBOOK.pdf, p.17)\n1.12 Termination\n The Company reserves the right to terminate summarily the service of an\n employee at any time should he/she be found guilty due to serious misconduct or\nbreach of contract. 1.13 Retirement Age\n Retirement age for male or female employees is upon reaching 60 years old and\n any offer of reemployment after retirement will be on contract basis, subject to\n approval by the Chief Executive Officer. 1.14 Working Days/Hours\n Monday to Friday : 8.30am – 6.00pm\n\n[5] (source: EMPLOYEES HANDBOOK.pdf, p.38)\nEMPLOYEE HANDBOOK\n______________________________________________________________________ _______________________\nIssue Date: Page Revision No. March 2017 38 1\n8 OTHERS\n 8.1 Retirement Age 66 years 8.2 Probationary Period Three (3) month*\n*Not applicable to contract and temporar y\nemployment 8.3 Working Hours Monday to Friday: 8.30am – 6.00pm 8.4 Notice of Resignation\n\n(Note: 'gemini' provider failed: Server error '503 Service Unavailable' for url 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503. Returned an extractive answer instead.)",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.8,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 4,
+        "retrieved_total": 5
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "remote-work",
+      "query": "Can employees work remotely?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3
+      },
+      "notes": []
+    },
+    {
+      "case_id": "maternity-leave",
+      "query": "How many days of maternity leave?",
+      "answer": "A female employee is entitled to sixty (60) days of maternity leave [2, 3]. This leave is consecutive and includes Rest Days and Public Holidays [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 5
+      },
+      "notes": []
+    }
+  ]
+}

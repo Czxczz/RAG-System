@@ -23,6 +23,9 @@ def _normalize(vectors: np.ndarray) -> np.ndarray:
     return (vectors / norms).astype("float32")
 
 
+BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
+
 class EmbeddingService:
     """Lazy-loading embedding backend selected by configuration."""
 
@@ -60,6 +63,19 @@ class EmbeddingService:
             self._dim = int(self.embed_texts(["dimension probe"]).shape[1])
         return self._dim
 
+    def _encode_local(self, texts: list[str], *, for_query: bool = False) -> np.ndarray:
+        model = self._load_local()
+        encode_kwargs: dict = {
+            "show_progress_bar": False,
+            "convert_to_numpy": True,
+        }
+        inputs = list(texts)
+        if for_query and "query" in getattr(model, "prompts", {}):
+            encode_kwargs["prompt_name"] = "query"
+        elif for_query and "bge" in self.settings.local_embedding_model.lower():
+            inputs = [BGE_QUERY_PREFIX + text for text in texts]
+        return np.asarray(model.encode(inputs, **encode_kwargs), dtype="float32")
+
     def embed_texts(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, self.dimension), dtype="float32")
@@ -72,16 +88,14 @@ class EmbeddingService:
             )
             vectors = np.array([d.embedding for d in resp.data], dtype="float32")
         else:  # local (default)
-            model = self._load_local()
-            vectors = np.asarray(
-                model.encode(texts, show_progress_bar=False, convert_to_numpy=True),
-                dtype="float32",
-            )
+            vectors = self._encode_local(texts)
 
         return _normalize(vectors)
 
     def embed_query(self, text: str) -> np.ndarray:
         """Embed a single query, returning a 1-D float32 vector."""
+        if self.provider == "local":
+            return _normalize(self._encode_local([text], for_query=True))[0]
         return self.embed_texts([text])[0]
 
 

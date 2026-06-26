@@ -1,8 +1,8 @@
 """Ingestion pipeline.
 
-Transforms a raw document into clean, semantically-sized text chunks:
+Transforms a raw document into clean, fixed-size text chunks:
 
-    load -> extract text -> clean -> chunk
+    load -> extract text -> clean -> chunk (sentence-aware, character budget)
 
 Supported formats: PDF (.pdf), Markdown (.md/.markdown), plain text (.txt).
 Embedding + storage happen downstream in the orchestrator.

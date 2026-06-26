@@ -151,6 +151,7 @@ See [`.env.example`](.env.example). Key settings:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
+| `LOCAL_EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Hugging Face model for local embeddings |
 | `LLM_PROVIDER` | `auto` | `auto` / `openai` / `gemini` / `ollama` / `extractive` |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | Chunking (characters) |
 | `TOP_K` | `5` | Chunks sent to the LLM after reranking |
@@ -174,6 +175,33 @@ query → embed → FAISS top RETRIEVE_K → filter MIN_SCORE → rerank → top
 - [ ] Auth + multi-user isolation
 - [ ] Streaming responses
 - [ ] Per-document / per-collection scoping
+
+---
+
+## Evaluation
+
+Offline scoring for retrieval and answer quality. You need a **labeled JSON dataset**
+(`eval/dataset.example.json` is a starter set for the employee handbook).
+
+Metrics:
+
+| Metric | Meaning |
+| --- | --- |
+| `precision@k` | Share of top-k retrieved chunks that match `relevant_keywords` |
+| `recall@k` | Share of `relevant_keywords` found in top-k chunk text |
+| `hallucination_rate` | Answers that fail refusal rules or invent facts/numbers |
+| `citation_accuracy` | Share of `[n]` markers that map to a supporting chunk |
+| `answer_keyword_recall` | Expected answer phrases present in the response |
+| `refusal_accuracy` | Correct "not found" behavior on out-of-corpus questions |
+
+Run:
+
+```bash
+python scripts/run_eval.py --dataset eval/dataset.example.json --mode gemini
+python scripts/run_eval.py --dataset eval/dataset.example.json --output eval/report.json
+```
+
+Add your own cases by copying the example format in `eval/dataset.example.json`.
 
 ---
 
