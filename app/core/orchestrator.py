@@ -19,10 +19,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.config import Settings
+from app.core.context_grouping import build_flat_context, build_grouped_context
 from app.core.embeddings import EmbeddingService
 from app.core.ingestion import ingest_file
 from app.core.llm_router import LLMRouter
 from app.core.query_engine import QueryEngine
+from app.core.query_rewriter import QueryRewriter
 from app.core.reranker import Reranker
 from app.core.registry import DocumentRecord, DocumentRegistry
 from app.core.vector_store import SearchHit, StoredChunk, VectorStore
@@ -71,13 +73,15 @@ class RAGOrchestrator:
         self.embeddings = embeddings
         self.store = store
         self.registry = registry
+        self.llm = LLMRouter(settings)
+        self.rewriter = QueryRewriter(settings, self.llm)
         self.query_engine = QueryEngine(
             settings,
             embeddings,
             store,
             reranker=reranker if settings.rerank_enabled else None,
+            rewriter=self.rewriter if settings.query_rewrite_enabled else None,
         )
-        self.llm = LLMRouter(settings)
 
     # ── Ingestion ────────────────────────────────────────────
     def ingest(self, source_path: Path, filename: str, content_type: str) -> IngestResult:
@@ -132,16 +136,22 @@ class RAGOrchestrator:
                 answer=NOT_FOUND_MESSAGE, grounded=False, provider="none", hits=[]
             )
 
-        user_prompt = self._build_prompt(query, hits)
-        answer, provider = self.llm.generate(SYSTEM_PROMPT, user_prompt, mode=mode)
-        return AnswerResult(answer=answer, grounded=True, provider=provider, hits=hits)
+        # Context grouping reorders chunks for coherence and returns the
+        # marker-aligned ordering, so citations[i] maps to ordered_hits[i].
+        if self.settings.context_grouping_enabled:
+            context, ordered_hits = build_grouped_context(hits)
+        else:
+            context, ordered_hits = build_flat_context(hits)
 
-    def _build_prompt(self, query: str, hits: list[SearchHit]) -> str:
-        blocks = []
-        for i, hit in enumerate(hits, start=1):
-            loc = f"{hit.chunk.filename}"
-            if hit.chunk.page is not None:
-                loc += f", p.{hit.chunk.page}"
-            blocks.append(f"[{i}] (source: {loc})\n{hit.chunk.text}")
-        context = "\n\n".join(blocks)
-        return f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\nAnswer with inline [n] citations."
+        user_prompt = self._build_prompt(query, context)
+        answer, provider = self.llm.generate(SYSTEM_PROMPT, user_prompt, mode=mode)
+        return AnswerResult(
+            answer=answer, grounded=True, provider=provider, hits=ordered_hits
+        )
+
+    @staticmethod
+    def _build_prompt(query: str, context: str) -> str:
+        return (
+            f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
+            "Answer with inline [n] citations."
+        )

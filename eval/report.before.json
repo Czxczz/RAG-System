@@ -1,0 +1,227 @@
+{
+  "dataset": "ec2-user-guide",
+  "mode": "extractive",
+  "top_k": 5,
+  "num_cases": 10,
+  "precision_at_k": 0.8,
+  "recall_at_k": 0.8,
+  "hallucination_rate": 1.0,
+  "citation_accuracy": 1.0,
+  "answer_keyword_recall": 0.8,
+  "refusal_accuracy": 0.0,
+  "redundancy": 0.9085724234580994,
+  "cases": [
+    {
+      "case_id": "imdsv2-require",
+      "query": "How do I require the use of IMDSv2 on my EC2 instances?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1653)\nAlso, conﬁgure all new instances to require IMDSv2. In other words,\ndisable IMDSv1 on all existing and new instances. 1. Conﬁgure existing instances to require IMDSv2:\nAmazon EC2 console\n1. Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/. 2. In the navigation pane, choose Instances. 3. Select your instance. 4. Choose Actions, Instance settings, Modify instance metadata options. 5. For IMDSv2, choose Required. 6. Choose Save. AWS CLI\nUse the modify-instance-metadata-options CLI command to specify that only IMDSv2 is to\nbe used. Note\nYou can modify this setting on running instances. The change takes eﬀect immediately\nwithout needing an instance restart. Access instance metadata 1631\n[2] (p.1668)\nFor information about using declarative policies, see Declarative policies in the\nAWS Organizations User Guide. Require the use of IMDSv2\nYou can use the following methods to require the use of IMDSv2 on your new instances. To require IMDSv2\n• Set IMDSv2 as the default for the account\n• Enforce IMDSv2 at the account level\n• Conﬁgure the instance at launch\n• Conﬁgure the AMI\n• Use an IAM policy\nSet IMDSv2 as the default for the account\nYou can set the default version for the instance metadata service (IMDS) at the account level for\neach AWS Region. This means that when you launch a new instance, the instance metadata version\nis automatically set to the account-level default. However, you can manually override the value at\nlaunch or after launch.\n[3] (p.1681)\nAmazon Elastic Compute Cloud User Guide\neu-west-3 2 required\n... Conﬁgure the instance at launch\nWhen you launch an instance, you can conﬁgure the instance to require the use of IMDSv2 by\nconﬁguring the following ﬁelds:\n• Amazon EC2 console: Set Metadata version to V2 only (token required). • AWS CLI: Set HttpTokens to required. When you specify that IMDSv2 is required, you must also enable the Instance Metadata Service\n(IMDS) endpoint by setting Metadata accessible to Enabled (console) or HttpEndpoint to\nenabled (AWS CLI). In a container environment, when IMDSv2 is required, we recommend setting the hop limit to 2. For more information, see Instance metadata access considerations.\n[4] (p.1681)\nConsole\nTo require the use of IMDSv2 on a new instance\n• When launching a new instance in the Amazon EC2 console, expand Advanced details, and\ndo the following:\n• For Metadata accessible, choose Enabled. • For Metadata version, choose V2 only (token required). • (Container environment) For Metadata response hop limit, choose 2. For more information, see Advanced details. AWS CLI\nTo require the use of IMDSv2 on a new instance\nThe following run-instances example launches a c6i.large instance with --metadataoptions set to HttpTokens=required. When you specify a value for HttpTokens, you must\nalso set HttpEndpoint to enabled. Because the secure token header is set to required for\nConﬁgure IMDS options 1659\n[5] (p.1689)\nWhen MetadataNoToken\nrecords zero IMDSv1 usage for an instance, the instance is then ready to require IMDSv2. Console\nTo require the use of IMDSv2 on an existing instance\n1. Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/. 2. In the navigation pane, choose Instances. 3. Select your instance. 4. Choose Actions, Instance settings, Modify instance metadata options. 5. In the Modify instance metadata options dialog box, do the following:\na. For Instance metadata service, select Enable. b. For IMDSv2, choose Required. c. Choose Save. AWS CLI\nTo require the use of IMDSv2 on an existing instance\nConﬁgure IMDS options 1667",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.9549858570098877
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "insufficient-capacity",
+      "query": "What does the InsufficientInstanceCapacity error mean and how do I resolve it?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1203)\nEdit-EC2InstanceCapacityReservationAttribute `\nCapacity Reservations 1181\n[2] (p.2313)\n{\n \"SpotOptions\": {\n \"AllocationStrategy\": \"capacity-optimized\",\n \"SingleInstanceType\": true,\n \"SingleAvailabilityZone\": true,\n \"MinTargetCapacity\": 20\n },\n \"LaunchTemplateConfigs\": [\nRequest types 2291\n[3] (p.2390)\n{\n \"FleetId\": \"fleet-12a34b55-67cd-8ef9-ba9b-9208dEXAMPLE\",\n \"Errors\": [\n {\n \"LaunchTemplateAndOverrides\": {\n \"LaunchTemplateSpecification\": {\n \"LaunchTemplateId\": \"lt-01234a567b8910abcEXAMPLE\",\n \"Version\": \"1\"\n },\n \"Overrides\": {\n \"InstanceType\": \"c4.xlarge\",\n \"AvailabilityZone\": \"us-east-1a\",\n }\n },\n \"Lifecycle\": \"on-demand\",\n \"ErrorCode\": \"InsufficientInstanceCapacity\",\n \"ErrorMessage\": \"\"\n },\n ],\n \"Instances\": [\n {\n \"LaunchTemplateAndOverrides\": {\n \"LaunchTemplateSpecification\": {\n \"LaunchTemplateId\": \"lt-01234a567b8910abcEXAMPLE\",\n \"Version\": \"1\"\n },\n \"Overrides\": {\nCreate an EC2 Fleet 2368\n[4] (p.2391)\n{\n \"FleetId\": \"fleet-12a34b55-67cd-8ef9-ba9b-9208dEXAMPLE\",\n \"Errors\": [\n {\n \"LaunchTemplateAndOverrides\": {\n \"LaunchTemplateSpecification\": {\n \"LaunchTemplateId\": \"lt-01234a567b8910abcEXAMPLE\",\n \"Version\": \"1\"\n },\n \"Overrides\": {\n \"InstanceType\": \"c4.xlarge\",\n \"AvailabilityZone\": \"us-east-1a\",\n }\n },\n \"Lifecycle\": \"on-demand\",\n \"ErrorCode\": \"InsufficientCapacity\",\n \"ErrorMessage\": \"\"\n },\n {\n \"LaunchTemplateAndOverrides\": {\n \"LaunchTemplateSpecification\": {\n \"LaunchTemplateId\": \"lt-01234a567b8910abcEXAMPLE\",\n \"Version\": \"1\"\n },\n \"Overrides\": {\n \"InstanceType\": \"c5.large\",\n \"AvailabilityZone\": \"us-east-1a\",\n }\n },\nCreate an EC2 Fleet 2369\n[5] (p.3608)\nSolution\nYou can request an instance limit increase on a per-region basis. For more information, see Amazon\nEC2 service quotas. Insuﬃcient instance capacity\nDescription\nYou get the InsufficientInstanceCapacity error when you try to launch a new instance or\nrestart a stopped instance. Cause\nIf you get this error when you try to launch an instance or restart a stopped instance, AWS does not\ncurrently have enough available On-Demand capacity to fulﬁll your request. Solution\nTo resolve the issue, try the following:\n• Wait a few minutes and then submit your request again; capacity can shift frequently. Instance limit exceeded 3586",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.9894458055496216
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "placement-strategies",
+      "query": "What placement group strategies does EC2 support?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.3058)\nAmazon Elastic Compute Cloud User Guide\nUse the Get-EC2CapacityReservationTopology cmdlet. Get-EC2CapacityReservationTopology `\n -Filter @{Name=\"instance-type\"; Values=\"p5en.48xlarge\"}\nPlacement groups for your Amazon EC2 instances\nTo meet the needs of your workload, you can launch a group of interdependent EC2 instances into a\nplacement group to inﬂuence their placement. Depending on the type of workload, you can create a placement group using one of the following\nplacement strategies:\n• Cluster – Packs instances close together inside an Availability Zone. This strategy enables\nworkloads to achieve the low-latency network performance necessary for tightly-coupled nodeto-node communication that is typical of high-performance computing (HPC) applications.\n[2] (p.3059)\n• You can't launch a Spot Instance that is conﬁgured to stop or hibernate on interruption in a\nplacement group. Contents\n• Placement strategies for your placement groups\n• Create a placement group for your EC2 instances\n• Change the placement for an EC2 instance\n• Delete a placement group\n• Shared placement groups\n• Placement groups on AWS Outposts\nPlacement strategies for your placement groups\nYou can create a placement group for your EC2 instances using one of the following placement\nstrategies. Placement strategies\n• Cluster placement groups\n• Partition placement groups\n• Spread placement groups\nCluster placement groups\nA cluster placement group is a logical grouping of instances within a single Availability Zone. Instances are not isolated to a single rack.\n[3] (p.3061)\nPartition placement groups\nPartition placement groups help reduce the likelihood of correlated hardware failures for your\napplication. When using partition placement groups, Amazon EC2 divides each group into logical\nsegments called partitions. Amazon EC2 ensures that each partition within a placement group has\nits own set of racks. Each rack has its own network and power source. No two partitions within\na placement group share the same racks, allowing you to isolate the impact of hardware failure\nwithin your application. The following image is a simple visual representation of a partition placement group in a single\nAvailability Zone. It shows instances that are placed into a partition placement group with three\nPlacement strategies 3039\n[4] (p.3062)\nThese applications use this information to make intelligent\ndata replication decisions for increasing data availability and durability. If you start or launch an instance in a partition placement group and there is insuﬃcient unique\nhardware to fulﬁll the request, the request fails. Amazon EC2 makes more distinct hardware\navailable over time, so you can try your request again later. Rules and limitations\nThe following rules apply to partition placement groups:\nPlacement strategies 3040\n[5] (p.3065)\nAmazon Elastic Compute Cloud User Guide\nConsole\nTo create a placement group\n1. Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/. 2. In the navigation pane, choose Placement Groups. 3. Choose Create placement group. 4. For Name, specify a name for the group. 5. For Placement strategy, choose the placement strategy for the group: Cluster, Spread, or\nPartition. a. If you chose Spread, for Spread level, choose Host or Rack. b. If you chose Partition, for Number of partitions, enter the number of partitions for\nthe group. 6. (Optional) To add a tag, under Tags, choose Add new tag, and then enter a key and value. 7. Choose Create group. AWS CLI\nUse the create-placement-group command.",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.874198317527771
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "security-group-inbound",
+      "query": "How do I allow inbound network traffic to my instance?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.33)\nIf the VPC\nisn't conﬁgured for public internet access, you won't be able to connect to your instance. • (Optional) To restrict inbound connection traﬃc to a speciﬁc network, choose Custom\ninstead of Anywhere, and enter the CIDR block for your network. • (Optional) To use a diﬀerent security group, choose Select existing security group and\nchoose an existing security group. If the security group does not have a rule that allows\nconnection traﬃc from your network, you won't be able to connect to your instance. For\na Linux instance, you must allow SSH traﬃc. For a Windows instance, you must allow RDP\ntraﬃc. 9. Under Conﬁgure storage, notice that we conﬁgured a root volume but no data volumes. This\nis suﬃcient for test purposes. 10.\n[2] (p.1447)\nAmazon Elastic Compute Cloud User Guide\nTask 2: Allow inbound traﬃc from the EC2 Instance Connect service to your instance\nWhen you use EC2 Instance Connect in the Amazon EC2 console to connect to an instance, the\ntraﬃc that must be allowed to reach the instance is traﬃc from the EC2 Instance Connect service. This is diﬀerent to connecting from your local computer to an instance; in that case, you must\nallow traﬃc from your local computer to your instance. To allow traﬃc from the EC2 Instance\nConnect service, you must create a security group that allows inbound SSH traﬃc from the IP\naddress range for the EC2 Instance Connect service. AWS uses preﬁx lists to manage IP address ranges.\n[3] (p.1478)\nAmazon Elastic Compute Cloud User Guide\nYou can conﬁgure additional security group rules to restrict inbound traﬃc to your instances. For example, you can use inbound rules to allow traﬃc on management ports only from the EC2\nInstance Connect Endpoint. You can conﬁgure route table rules to allow the endpoint to connect to any instance in any subnet\nof the VPC. The following diagram shows how a user can connect to their instances from the internet using an\nEC2 Instance Connect Endpoint. First, create an EC2 Instance Connect Endpoint in subnet A. We\ncreate a network interface for the endpoint in the subnet, which serves as the entry point for traﬃc\ndestined to your instances in the VPC.\n[4] (p.2286)\nBy default,\nwhen you launch an instance, a new security group is created with a rule that allows\ninbound SSH traﬃc from anywhere. To make sure that only your IP address can connect to your instance, under Firewall\n(security groups), from the drop-down list next to the Allow SSH traﬃc from checkbox,\nchoose My IP. c. To allow traﬃc from the internet to your instance, select the following checkboxes:\n• Allow HTTPs traﬃc from the internet\n• Allow HTTP traﬃc from the internet\n8. In the Summary panel, review your instance conﬁguration and then choose Launch instance. 9. Choose View all instances to close the conﬁrmation page and return to the console. Your\ninstance will ﬁrst be in a pending state, and will then go into the running state.\n[5] (p.3640)\nc. Choose Save routes. Check the network access control list (ACL) for the subnet. The network ACLs must allow inbound SSH traﬃc from your local IP address on port 22. It must\nalso allow outbound traﬃc to the ephemeral ports (1024-65535). Error connecting to your instance: Connection timed out 3618",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8738211393356323
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "elastic-ip",
+      "query": "What is an Elastic IP address?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.2622)\nAlternatively, you can specify the Elastic IP address in a DNS\nrecord for your domain, so that your domain points to your instance. For more information, see the\ndocumentation for your domain registrar. An Elastic IP address is a public IPv4 address, which is reachable from the internet. If you need to\nconnect to an instance that does not have a public IPv4 address, you can associate an Elastic IP\naddress with your instance to enable communication with the internet. Contents\n• Elastic IP address pricing\n• Elastic IP address basics\n• Elastic IP address quota\n• Associate an Elastic IP address with an instance\n• Transfer an Elastic IP address between AWS accounts\n• Release an Elastic IP address\n• Create a reverse DNS record for email on Amazon EC2\nElastic IP addresses 2600\n[2] (p.2623)\nAmazon Elastic Compute Cloud User Guide\nElastic IP address pricing\nThere is a charge for all Elastic IP addresses whether they are in use (allocated to a resource, like an\nEC2 instance) or idle (created in your account but unallocated). AWS charges for all public IPv4 addresses, including public IPv4 addresses associated with running\ninstances and Elastic IP addresses. For more information, see the Public IPv4 Address tab on the\nAmazon VPC pricing page. Elastic IP address basics\nThe following are the basic characteristics of an Elastic IP address:\n• An Elastic IP address is static; it does not change over time. • An Elastic IP address is for use in a speciﬁc Region only, and cannot be moved to a diﬀerent\nRegion.\n[3] (p.2623)\n• An Elastic IP address comes from Amazon's pool of IPv4 addresses, or from a custom IPv4\naddress pool that you have brought to your AWS account. We do not support Elastic IP addresses\nfor IPv6. • To use an Elastic IP address, you ﬁrst allocate one to your account, and then associate it with\nyour instance or a network interface. • When you associate an Elastic IP address with an instance, it is also associated with the instance's\nprimary network interface. When you associate an Elastic IP address with a network interface\nthat is attached to an instance, it is also associated with the instance.\n[4] (p.2624)\nFor more information, see\nElastic IP address quota. • When you allocate the Elastic IP addresses, you can associate the Elastic IP addresses with a\nnetwork border group. This is the location from which we advertise the CIDR block. Setting the\nnetwork border group limits the CIDR block to this group. If you do not specify the network\nborder group, we set the border group containing all of the Availability Zones in the Region (for\nexample, us-west-2). • An Elastic IP address is for use in a speciﬁc network border group only. Elastic IP address quota\nBy default, all AWS accounts have a quota of ﬁve (5) Elastic IP addresses per Region, because public\n(IPv4) internet addresses are a scarce public resource.\n[5] (p.2643)\nWhen you launch an instance, the IPv6 address is\nassigned to the primary network interface. Elastic IP addresses for network interfaces\nYou can associate an Elastic IP address with one of the private IPv4 addresses for the network\ninterface. You can associate one Elastic IP address with each private IPv4 address. If you\nNetwork interface concepts 2621",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8683322668075562
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "user-data-launch",
+      "query": "How can I run a script automatically when my instance launches?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1702)\nAmazon Elastic Compute Cloud User Guide\nImportant\nBy default, user data scripts and cloud-init directives run only during the boot cycle when\nyou ﬁrst launch an instance. You can update your conﬁguration to ensure that your user\ndata scripts and cloud-init directives run every time you restart your instance. For more\ninformation, see How can I utilize user data to automatically run a script with every restart\nof my Amazon EC2 Linux instance? in the AWS Knowledge Center. User data shell scripts must start with the #! characters and the path to the interpreter you want\nto read the script (commonly /bin/bash). For an introduction on shell scripting, see the Bash\nReference Manual on the GNU Operating System website.\n[2] (p.1711)\nSeparate the commands using line breaks as shown in\nthe following example. <script>\n echo Current date and time >> %SystemRoot%\\Temp\\test.log\n echo %DATE% %TIME% >> %SystemRoot%\\Temp\\test.log\n</script>\nBy default, user data scripts run one time when you launch the instance. To run the user data\nscripts every time you reboot or start the instance, add <persist>true</persist> to the user\ndata. Run commands at launch 1689\n[3] (p.1715)\nAlternatively,\nyou can specify that user data scripts are run every time the instance reboots or restarts. Note\nUser data is not enabled to run by default after the initial launch. To enable user data to\nrun when you reboot or start the instance, see Run scripts during subsequent reboots or\nstarts. User data scripts are run from the local administrator account when a random password is\ngenerated. Otherwise, user data scripts are run from the System account. Instance launch scripts\nScripts in the instance user data are run during the initial launch of the instance. If the persist\ntag is found, user data execution is enabled for subsequent reboots or starts. The log ﬁles for\nEC2Launch v2, EC2Launch, and EC2Conﬁg contain the output from the standard output and\nstandard error streams.\n[4] (p.2083)\nEC2Launch v2 runs the script as an executeScript task in the UserData stage. To conform with EC2Launch v1 and EC2Conﬁg behavior, the user data script runs as an attached/\ninline process by default. You can add optional tags to customize how your script runs. For example, to run the user data\nscript when the instance reboots in addition to one time when the instance launches, you can use\nthe following tag:\n<persist>true</persist>\nExample:\nWindows launch agents 2061\n[5] (p.3432)\nAmazon Elastic Compute Cloud User Guide\nUser data script\nIf you choose to automatically attach user data scripts, the launch instance wizard adds the\nfollowing user data to the instance. This script installs the necessary packages, mounts the ﬁle\nsystem, and updates your instance settings so that the ﬁle system will automatically re-mount\nwhenever the instance restarts.",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.9090948104858398
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "t2micro-free-tier",
+      "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1353)\nYou launch an instance from an Amazon Machine\nImage (AMI). The AMI provides the operating system, application server, and applications for your\ninstance. When you create your AWS account, you can get started with Amazon EC2 for free using the AWS\nFree Tier. Your Free Tier beneﬁts depend on when you created your AWS account. If your created\nyour AWS account before July 15, 2025 and it's less than 12 months old, you can use the Free Tier\nto launch and use a t2.micro instance for free (in Regions where t2.micro is unavailable, you\ncan use a t3.micro instance under the Free Tier). You incur charges for your instance or usage\nthat counts against your Free Tier limits while the instance is running, even if it remains idle. For\nmore information, see Amazon EC2 pricing.\n[2] (p.2265)\nAmazon Elastic Compute Cloud User Guide\nNote\nDepending on when you created your account, you might be eligible to use Amazon\nEC2 under the Free Tier. If your created your AWS account before July 15, 2025 and it's less than 12 months\nold, you can use Amazon EC2 under the Free Tier by selecting the t2.micro instance\ntype, or the t3.micro instance type in Regions where t2.micro is unavailable. Be aware\nthat when you launch a t3.micro instance, it defaults to Unlimited mode, which might\nincur additional charges based on CPU usage. If an instance type can be used under the\nFree Tier, it is labeled Free tier eligible.\n[3] (p.2274)\n5. Under Instance type, for Instance type, select an instance type that meets your web server\nneeds. This tutorial uses t2.micro. Note\nDepending on when you created your account, you might be eligible to use Amazon\nEC2 under the Free Tier. If your created your AWS account before July 15, 2025 and it's less than 12 months\nold, you can use Amazon EC2 under the Free Tier by selecting the t2.micro instance\ntype, or the t3.micro instance type in Regions where t2.micro is unavailable. Be aware\nthat when you launch a t3.micro instance, it defaults to Unlimited mode, which might\nincur additional charges based on CPU usage. If an instance type can be used under the\nFree Tier, it is labeled Free tier eligible.\n[4] (p.2285)\n5. Under Instance type, for Instance type, select an instance type that meets your web server\nneeds. This tutorial uses t2.micro. Note\nDepending on when you created your account, you might be eligible to use Amazon\nEC2 under the Free Tier. If your created your AWS account before July 15, 2025 and it's less than 12 months\nold, you can use Amazon EC2 under the Free Tier by selecting the t2.micro instance\ntype, or the t3.micro instance type in Regions where t2.micro is unavailable. Be aware\nthat when you launch a t3.micro instance, it defaults to Unlimited mode, which might\nincur additional charges based on CPU usage. If an instance type can be used under the\nFree Tier, it is labeled Free tier eligible.\n[5] (p.3588)\nYour Free Tier beneﬁts are diﬀerent depending on whether you created your account\nbefore July 15, 2025, or on or after July 15, 2025. For more information, see Explore AWS services\nwith AWS Free Tier in the AWS Billing User Guide. Free Tier beneﬁts before and after July 15, 2025\nThe following table compares your Free Tier beneﬁts based on your AWS account creation date:\nFree Tier beneﬁt Account created before July\n15, 2025\nAccount created on or after\nJuly 15, 2025\nInstance types marked Free\ntier eligible\nt2.micro, t3.micro t3.micro, t3.small,\nt4g.micro , t4g.small\n, c7i-flex.large , m7iflex.large\nAmazon EBS volume types\nmarked Free tier eligible\nstandard, st1, sc1, gp2,\nand gp3\nstandard, st1, sc1, gp2,\nand gp3\nAMIs marked Free tier\neligible\nCheck for AMIs marked Free\ntier eligible.",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.9999998807907104
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "spot-interruption",
+      "query": "What happens when a Spot Instance is interrupted?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1009)\nA Spot Instance interruption notice is a warning that is issued two minutes before Amazon\nEC2 interrupts a Spot Instance. If your workload is \"time-ﬂexible,\" you can conﬁgure your Spot\nInstances to be stopped or hibernated, instead of being terminated, when they are interrupted. Amazon EC2 automatically stops or hibernates your Spot Instances on interruption, and\nautomatically resumes the instances when we have available capacity. We recommend that you create a rule in Amazon EventBridge that captures the rebalance\nrecommendations and interruption notiﬁcations, and then triggers a checkpoint for the progress of\nyour workload or gracefully handles the interruption. For more information, see Monitor rebalance\nrecommendation signals.\n[2] (p.1059)\nWhen Amazon EC2 reclaims a Spot Instance, we\ncall this event a Spot Instance interruption. Demand for Spot Instances can vary signiﬁcantly from moment to moment, and the availability\nof Spot Instances can also vary signiﬁcantly depending on how many unused EC2 instances are\navailable. It is always possible that your Spot Instance might be interrupted. The following are the\npossible reasons that Amazon EC2 might interrupt your Spot Instances:\nCapacity\nAmazon EC2 can interrupt your Spot Instance when it needs it back. EC2 reclaims your instance\nmainly to repurpose capacity, but it can also occur for other reasons such as host maintenance\nor hardware decommission. Price\nThe Spot price is higher than your maximum price. You can specify the maximum price in your Spot request.\n[3] (p.1063)\nAmazon Elastic Compute Cloud User Guide\n• While we make every eﬀort to provide these warnings as soon as possible, it is possible that your\nSpot Instance is interrupted before the warnings can be made available. Test your application to\nensure that it handles an unexpected instance interruption gracefully, even if you are monitoring\nfor rebalance recommendation signals and interruption notices. You can do this by running\nthe application using an On-Demand Instance and then terminating the On-Demand Instance\nyourself. • Run a controlled fault injection experiment with AWS Fault Injection Service to test how your\napplication responds when your Spot Instance is interrupted.\n[4] (p.1063)\nFor more information, see the\nTutorial: Test Spot Instance interruptions using AWS FIS in the AWS Fault Injection Service User\nGuide. Initiate a Spot Instance interruption\nYou can select a Spot Instance request or a Spot Fleet request in the Amazon EC2 console and\ninitiate a Spot Instance interruption so that you can test how the applications on your Spot\nInstances handle being interrupted. When you initiate a Spot Instance interruption, Amazon\nEC2 notiﬁes you that your Spot Instance will be interrupted in two minutes, and then, after two\nminutes, the instance is interrupted. The underlying service that performs the Spot Instance interruption is AWS Fault Injection Service\n(AWS FIS). For information about AWS FIS, see AWS Fault Injection Service.\n[5] (p.1073)\nInstance usage\nWho interrupts the\nSpot Instance\nOperating system Interrupted in the\nﬁrst hour\nInterrupted in any\nhour after the ﬁrst\nhour\nWindows and Linux\n(excluding SUSE)\nCharged for the\nseconds used\nCharged for the\nseconds usedIf you stop or\nterminate the Spot\nInstance SUSE Charged for the full\nhour even if you used\na partial hour\nCharged for the full\nhours used, and\ncharged a full hour\nfor the interrupted\npartial hour\nWindows and Linux\n(excluding SUSE)\nNo charge Charged for the\nseconds usedIf the Amazon EC2\ninterrupts the Spot\nInstance SUSE No charge\nCharged for the full\nhours used, but no\ncharge for the inter\nrupted partial hour\nEBS volume usage\nWhile an interrupted Spot Instance is stopped, you are charged only for the EBS volumes, which are\npreserved. Spot Instances 1051",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8797532320022583
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "refuse-bigquery",
+      "query": "How do I configure billing alerts in Google BigQuery?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.935)\nYou can also conﬁgure alarms to warn about approaching quotas. For more information,\nsee Service Quotas and Amazon CloudWatch alarms in the Service Quotas User Guide. Request a quota increase\nEven though Amazon EC2 automatically increases your On-Demand Instance quotas based on your\nusage, you can request a quota increase if necessary. For example, if you intend to launch more\nOn-Demand Instances 913\n[2] (p.1241)\n4. In the Assign billing screen, select the consumer account to which to assign billing, and\nthen choose Request. AWS CLI\nTo assign billing of a shared Capacity Reservation\nUse the associate-capacity-reservation-billing-owner command. For --capacityreservation-id, specify the ID of the shared Capacity Reservation. For --unusedreservation-billing-owner-id, specify the ID of the AWS account to which to assign\nbilling. Capacity Reservations 1219\n[3] (p.1395)\nc. When you're ready to launch your instance, choose Launch instance. If the instance fails to launch or the state immediately goes to terminated instead of\nrunning, see Troubleshoot Amazon EC2 instance launch issues. 12. (Optional) You can create a billing alert for the instance. On the conﬁrmation screen, under\nNext Steps, choose Create billing alerts and follow the directions. Billing alerts can also be\nLaunch using the launch instance wizard 1373\n[4] (p.1405)\nYou can view the pricing\ninformation, as well as any other information that the vendor has provided. When you're\nready, choose Subscribe and launch. This will start your subscription immediately. While the\nsubscription is underway, you can conﬁgure the instance by continuing with the steps in this\nprocedure. If there are any problems with your credit card details, you will be asked to update\nyour account details. Note\nYou're not charged for using the product until you have launched an instance with the\nAMI. Take note of the pricing for each supported instance type when you select an\ninstance type. Additional taxes might also apply to the product. 6. For Instance type, select an instance type for your instance.\n[5] (p.3484)\nAmazon Elastic Compute Cloud User Guide\n4. On the Manage CloudWatch alarms page, under Add or edit alarm, choose Create an\nalarm. 5. For Alarm notiﬁcation, turn the toggle on to conﬁgure Amazon Simple Notiﬁcation Service\n(Amazon SNS) notiﬁcations. Select an existing Amazon SNS topic or enter a name to create\na new topic. If you add an email address to the list of recipients or create a new topic, Amazon\nSNS sends a conﬁrmation email to each new address. Each recipient must choose the\nconﬁrmation link in the email. Only conﬁrmed addresses receive alert notiﬁcations. 6. For Alarm action, turn the toggle on to specify an action to take when the alarm is\ntriggered. Select the action. 7. For Alarm thresholds, specify the metric and criteria for the alarm.",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": false,
+        "retrieved_relevant": 0,
+        "retrieved_total": 5,
+        "redundancy": 0.7440863847732544
+      },
+      "notes": [
+        "Expected refusal but got an answer.",
+        "Hallucination heuristic triggered."
+      ]
+    },
+    {
+      "case_id": "refuse-iphone",
+      "query": "What is the release date of the iPhone 15?",
+      "answer": "No LLM is configured, so here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.473)\nAmazon Elastic Compute Cloud User Guide\nRelease Changes\n2025.03.18 All AMIs\n• Updated awscli to 2.24.2\n• Updated Homebrew to 4.4.20\nRelease of macOS Sequoia 15.3.1\n• Security content of macOS Sequoia 15.3.1\nRelease of macOS Sonoma 14.7.4\n• Security content of macOS Sonoma 14.7.4\n• Updated Safari to 18.3\nRelease of macOS Ventura 13.7.4\n• Security content of macOS Ventura 13.7.4\n• Updated Safari to 18.3\nMac instances 451\n[2] (p.474)\nAmazon Elastic Compute Cloud User Guide\nRelease Changes\n2025.01.24 All AMIs\n• Updated awscli to 2.22.33\n• Updated Homebrew to 4.4.15\nRelease of macOS Sequoia 15.2\n• Security content of macOS Sequoia 15.2\n• Updated Command Line Tools to 16.2\nRelease of macOS Sonoma 14.7.2\n• Security content of macOS Sonoma 14.7.2\n• Updated Safari to 18.2\n• Updated Command Line Tools to 16.2\nRelease of macOS Ventura 13.7.2\n• Security content of macOS Ventura 13.7.2\n• Updated Safari to 18.2\nMac instances 452\n[3] (p.475)\nAmazon Elastic Compute Cloud User Guide\nRelease Changes\n2024.12.20 All AMIs\n• Updated Homebrew to 4.4.8\n• Updated aws-cli to 2.22.5\n• Updated amazon-ssm-agent to 3.3.987.0\nRelease of macOS Sequoia 15.1.1\n• Security content of macOS Sequoia 15.1.1\nRelease of macOS Sonoma 14.7.1\n• Security content of macOS Sonoma 14.7.1\n• Updated Safari to 18.1.1\nRelease of macOS Ventura 13.7.1\n• Security content of macOS Ventura 13.7.1\n• Updated Safari to 18.1.1\nMac instances 453\n[4] (p.605)\nTo get the maximum performance from\nan instance launched before February 26, 2020, stop and start it. • C5, C5d, C5n, M5, M5d, M5n, M5dn, R5, R5d, R5n, R5dn, and P3dn instances launched after\nDecember 3, 2019 provide the maximum EBS optimized performance. To get the maximum\nperformance from an instance launched before December 3, 2019, stop and start it. • u-6tb1.metal, u-9tb1.metal, and u-12tb1.metal instances launched after March 12, 2020\nprovide the maximum EBS optimized performance. Instances of these types launched before\nMarch 12, 2020 might provide lower performance. To get the maximum performance from an\ninstance launched before March 12, 2020, contact your account team to upgrade the instance at\nno additional cost.\n[5] (p.3023)\nUsers should refer to the oﬃcial website. • Drop support for openSUSE 15.4 or older\nJune 20,\n2024\nRelease notes 3001",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": false,
+        "retrieved_relevant": 0,
+        "retrieved_total": 5,
+        "redundancy": 0.9920065402984619
+      },
+      "notes": [
+        "Expected refusal but got an answer.",
+        "Hallucination heuristic triggered."
+      ]
+    }
+  ]
+}

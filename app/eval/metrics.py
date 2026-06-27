@@ -124,10 +124,28 @@ def is_hallucination(answer: str, hits: list[SearchHit], case: EvalCase) -> bool
     return False
 
 
+def redundancy(hits: list[SearchHit], vectors_by_id: dict) -> float:
+    """Max pairwise cosine among final chunks (1.0 == exact duplicate).
+
+    `vectors_by_id` maps chunk id -> L2-normalised embedding, so dot product is
+    cosine. Returns 0.0 when fewer than two vectors are available.
+    """
+    import numpy as np
+
+    vecs = [vectors_by_id[h.chunk.id] for h in hits if h.chunk.id in vectors_by_id]
+    if len(vecs) < 2:
+        return 0.0
+    matrix = np.vstack(vecs)
+    sim = matrix @ matrix.T
+    np.fill_diagonal(sim, -1.0)
+    return float(sim.max())
+
+
 def score_case(
     case: EvalCase,
     answer: str,
     hits: list[SearchHit],
+    redundancy_score: float = 0.0,
 ) -> CaseMetrics:
     refused = _is_refusal(answer)
     retrieved_relevant = sum(
@@ -143,4 +161,5 @@ def score_case(
         refused_correctly=refused if case.should_refuse else not refused,
         retrieved_relevant=retrieved_relevant,
         retrieved_total=len(hits),
+        redundancy=redundancy_score,
     )

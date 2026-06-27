@@ -56,8 +56,11 @@ app/
     ├── ingestion.py     # load → extract → clean → chunk
     ├── embeddings.py    # local (sentence-transformers) | OpenAI
     ├── vector_store.py  # FAISS index + persisted metadata
-    ├── query_engine.py  # retrieval + cross-encoder rerank
+    ├── query_rewriter.py   # multi-query expansion (LLM + heuristic)
+    ├── query_engine.py  # retrieval pipeline orchestration
     ├── reranker.py      # cross-encoder second-stage scoring
+    ├── diversity.py        # MMR diversity-aware reranking
+    ├── context_grouping.py # group chunks by source for coherent context
     ├── llm_router.py    # OpenAI / Gemini / Ollama / extractive fallback
     ├── registry.py      # document catalogue
     └── orchestrator.py  # the core brain
@@ -86,7 +89,14 @@ Defaults work with **zero configuration**: local embeddings
 
 - **Cloud / accuracy mode:** set `OPENAI_API_KEY` (OpenAI) or `GEMINI_API_KEY`
   (Google Gemini) in `.env`.
-- **Local / privacy mode:** run [Ollama](https://ollama.com) (`ollama pull llama3.1`).
+- **Local / privacy mode:** install [Ollama](https://ollama.com), then:
+
+  ```bash
+  chmod +x scripts/setup_ollama.sh
+  ./scripts/setup_ollama.sh          # pulls qwen2.5:3b (best for 8 GB RAM)
+  ```
+
+  Set `LLM_PROVIDER=ollama` in `.env`, or use `--mode ollama` on `/chat` and eval.
 
 ### 3. Run
 
@@ -159,18 +169,44 @@ See [`.env.example`](.env.example). Key settings:
 | `RERANK_ENABLED` | `true` | Enable cross-encoder reranking |
 | `RETRIEVE_K` | `20` | FAISS candidate pool when reranking is on |
 | `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder model |
+| `QUERY_REWRITE_ENABLED` | `true` | Multi-query expansion of the question |
+| `QUERY_REWRITE_NUM_VARIANTS` | `3` | Extra query variants beyond the original |
+| `QUERY_REWRITE_USE_LLM` | `true` | Use the LLM for paraphrases (else heuristic) |
+| `MMR_ENABLED` | `true` | Diversity-aware (MMR) reranking |
+| `MMR_LAMBDA` | `0.7` | Relevance↔diversity trade-off (1.0…0.0) |
+| `CONTEXT_GROUPING_ENABLED` | `true` | Group context by source in reading order |
 
-Retrieval flow when reranking is enabled:
+### Retrieval pipeline
+
+Precision and context coherence are improved with three stages on top of
+vector search:
 
 ```
-query → embed → FAISS top RETRIEVE_K → filter MIN_SCORE → rerank → top TOP_K → LLM
+query
+  → rewrite into variants ........ multi-query (LLM paraphrases / heuristic)
+  → embed + FAISS top RETRIEVE_K .. per variant, fused by max-cosine
+  → filter MIN_SCORE
+  → cross-encoder rerank .......... joint (query, chunk) relevance
+  → MMR diversity rerank .......... drop near-duplicates, keep top TOP_K
+  → context grouping .............. group by source, reading order, dedupe overlap
+  → LLM (grounded answer + [n] citations)
 ```
+
+- **Query rewriting** lifts recall by retrieving for several phrasings, then
+  fuses the pools (each chunk keeps its best cosine score).
+- **MMR** maximises `λ·relevance − (1−λ)·redundancy`, so the final set is
+  relevant *and* non-redundant.
+- **Context grouping** presents same-document chunks together in reading order
+  and removes overlapping text, while preserving each chunk's `[n]` citation.
 
 ---
 
 ## Roadmap (v2+)
 
 - [x] Cross-encoder reranking
+- [x] Query rewriting (multi-query)
+- [x] Diversity-aware reranking (MMR)
+- [x] Context grouping
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
 - [ ] Streaming responses

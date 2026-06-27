@@ -1,0 +1,226 @@
+{
+  "dataset": "ec2-user-guide",
+  "mode": "ollama",
+  "top_k": 3,
+  "num_cases": 10,
+  "precision_at_k": 0.76,
+  "recall_at_k": 0.8,
+  "hallucination_rate": 0.5,
+  "citation_accuracy": 0.73,
+  "answer_keyword_recall": 0.8,
+  "refusal_accuracy": 0.5,
+  "redundancy": 0.8432173669338227,
+  "cases": [
+    {
+      "case_id": "imdsv2-require",
+      "query": "How do I require the use of IMDSv2 on my EC2 instances?",
+      "answer": "To require the use of IMDSv2 on your EC2 instances, you can follow these steps:\n\n1. **Update Software to IMDSv2 Compatible Versions**: Ensure all SDKs, CLIs, and software that use Role credentials are updated to compatible versions with IMDSv2 [1].\n\n2. **Require IMDSv2 on Instances**:\n   - For new instances: Use the `aws ec2 run-instances` command with specific metadata options like `HttpEndpoint=enabled`, `HttpTokens=required`, and `HttpPutResponseHopLimit=2`. Alternatively, you can use PowerShell to launch a new instance with these settings [2].\n   - For existing instances:\n     - Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/.\n     - In the navigation pane, choose Instances.\n     - Select your instance and then choose Actions, Instance settings, Modify instance metadata options.\n     - Enable Instance metadata service and set IMDSv2 to Required. Save these changes [3].\n\nAdditionally, you can enforce this setting using an IAM policy or modify default instance metadata options:\n\n- **Using Policy**: Specify that the RunInstances API call requires instances to be opted in for IMDSv2 [4].\n- **Using Console**: Disable enforcement of IMDSv2 at the account level if needed [5].",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8725326061248779
+      },
+      "notes": [],
+      "elapsed_seconds": 292.7
+    },
+    {
+      "case_id": "insufficient-capacity",
+      "query": "What does the InsufficientInstanceCapacity error mean and how do I resolve it?",
+      "answer": "The InsufficientInstanceCapacity error means that AWS currently has insufficient available On-Demand capacity to fulfill your request for launching a new instance or restarting a stopped instance [5]. To resolve this issue, you can try waiting a few minutes and then submitting your request again; capacity can shift frequently [5]. Additionally, if the error persists, you may need to increase the instance limit on a per-region basis by requesting an instance limit increase on Amazon EC2 service quotas [n] (p.3608).",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8215417265892029
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 157.2
+    },
+    {
+      "case_id": "placement-strategies",
+      "query": "What placement group strategies does EC2 support?",
+      "answer": "[1], [2], [3], [4], [5] EC2 supports three placement group strategies: Cluster, Partition, and Spread.",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 0.8,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.874198317527771
+      },
+      "notes": [],
+      "elapsed_seconds": 179.2
+    },
+    {
+      "case_id": "security-group-inbound",
+      "query": "How do I allow inbound network traffic to my instance?",
+      "answer": "To allow inbound network traffic to your instance, you can configure security groups and route tables as described in the documents. For example, under Firewall (security groups), from the drop-down list next to the Allow SSH traffic from checkbox, choose My IP. Additionally, select checkboxes for allowing HTTPs and HTTP traffic from the internet. [4]",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8514612913131714
+      },
+      "notes": [],
+      "elapsed_seconds": 189.4
+    },
+    {
+      "case_id": "elastic-ip",
+      "query": "What is an Elastic IP address?",
+      "answer": "An Elastic IP address is static and is used in a specific Region only, cannot be moved to a different Region [3]. It comes from Amazon's pool of IPv4 addresses or a custom IPv4 address pool brought into your AWS account [3]. To use an Elastic IP address, you first allocate one to your account, then associate it with your instance or a network interface. When associated with an instance, it is also associated with the instance's primary network interface [3]. For more information on Elastic IP addresses, see their quota and how they can be used in a specific network border group [4].",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8683322668075562
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 188.8
+    },
+    {
+      "case_id": "user-data-launch",
+      "query": "How can I run a script automatically when my instance launches?",
+      "answer": "[3], [4]",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 0.5,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 5,
+        "redundancy": 0.8172080516815186
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 143.6
+    },
+    {
+      "case_id": "t2micro-free-tier",
+      "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
+      "answer": "[3] (p.2265) If your created your AWS account before July 15, 2025 and you use a t2.micro or t3.micro instance under the AWS Free Tier offer, charges might apply if your average utilization over a rolling 24-hour period exceeds the baseline utilization of the instance.",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 0.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8718513250350952
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 226.8
+    },
+    {
+      "case_id": "spot-interruption",
+      "query": "What happens when a Spot Instance is interrupted?",
+      "answer": "When a Spot Instance is interrupted, Amazon EC2 can interrupt it based on capacity needs or price reasons. If the interruption occurs due to capacity need, your instance will be stopped or hibernated if configured so by you. If the interruption is due to price, and the Spot price exceeds your maximum price specified in the request, your instance will also be interrupted [1]. In either case, Amazon EC2 automatically handles stopping or resuming the instances as needed [1].",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 5,
+        "retrieved_total": 5,
+        "redundancy": 0.8797532320022583
+      },
+      "notes": [],
+      "elapsed_seconds": 230.3
+    },
+    {
+      "case_id": "refuse-bigquery",
+      "query": "How do I configure billing alerts in Google BigQuery?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to that question.",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": true,
+        "citation_accuracy": 0.0,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": false,
+        "retrieved_relevant": 0,
+        "retrieved_total": 5,
+        "redundancy": 0.7440863847732544
+      },
+      "notes": [
+        "Expected refusal but got an answer.",
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 132.2
+    },
+    {
+      "case_id": "refuse-iphone",
+      "query": "What is the release date of the iPhone 15?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "ollama",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 5,
+        "redundancy": 0.8312084674835205
+      },
+      "notes": [],
+      "elapsed_seconds": 175.9
+    }
+  ]
+}

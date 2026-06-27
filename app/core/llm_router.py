@@ -37,7 +37,8 @@ class LLMRouter:
         except Exception:
             return False
 
-    def _resolve_provider(self, mode: str) -> str:
+    def resolve_provider(self, mode: str) -> str:
+        """Resolve a routing mode to a concrete provider (public)."""
         mode = (mode or "auto").lower()
         if mode in {"openai", "gemini", "ollama", "extractive"}:
             return mode
@@ -50,24 +51,43 @@ class LLMRouter:
             return "ollama"
         return "extractive"
 
+    # Backwards-compatible private alias.
+    def _resolve_provider(self, mode: str) -> str:
+        return self.resolve_provider(mode)
+
+    def has_llm(self, mode: str = "auto") -> bool:
+        """True when a real (non-extractive) LLM provider is available."""
+        return self.resolve_provider(mode) != "extractive"
+
     # ── Generation ───────────────────────────────────────────
     def generate(self, system_prompt: str, user_prompt: str, mode: str) -> tuple[str, str]:
-        provider = self._resolve_provider(mode)
-        try:
-            if provider == "openai":
-                return self._generate_openai(system_prompt, user_prompt), "openai"
-            if provider == "gemini":
-                return self._generate_gemini(system_prompt, user_prompt), "gemini"
-            if provider == "ollama":
-                return self._generate_ollama(system_prompt, user_prompt), "ollama"
-        except Exception as exc:  # graceful fallback keeps the API responsive
-            return (
-                self._generate_extractive(user_prompt)
-                + f"\n\n(Note: '{provider}' provider failed: {exc}. "
-                "Returned an extractive answer instead.)",
-                "extractive",
-            )
-        return self._generate_extractive(user_prompt), "extractive"
+        primary = self._resolve_provider(mode)
+        # If cloud fails (429, 503, …), try local Ollama before extractive dump.
+        chain = [primary]
+        if primary in {"openai", "gemini"} and self._ollama_available():
+            chain.append("ollama")
+
+        last_exc: Exception | None = None
+        for provider in chain:
+            try:
+                if provider == "openai":
+                    return self._generate_openai(system_prompt, user_prompt), "openai"
+                if provider == "gemini":
+                    return self._generate_gemini(system_prompt, user_prompt), "gemini"
+                if provider == "ollama":
+                    return self._generate_ollama(system_prompt, user_prompt), "ollama"
+            except Exception as exc:
+                last_exc = exc
+                continue
+
+        if primary == "extractive":
+            return self._generate_extractive(user_prompt), "extractive"
+
+        note = str(last_exc) if last_exc else "unknown error"
+        return (
+            self._generate_extractive(user_prompt, provider_failed=primary, error=note),
+            "extractive",
+        )
 
     def _generate_openai(self, system_prompt: str, user_prompt: str) -> str:
         if self._openai_client is None:
@@ -122,18 +142,27 @@ class LLMRouter:
             json={
                 "model": self.settings.ollama_model,
                 "stream": False,
-                "options": {"temperature": 0.1},
+                "options": {
+                    "temperature": 0.1,
+                    "num_ctx": self.settings.ollama_num_ctx,
+                },
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
             },
-            timeout=120.0,
+            timeout=self.settings.ollama_timeout,
         )
         resp.raise_for_status()
         return resp.json()["message"]["content"].strip()
 
-    def _generate_extractive(self, user_prompt: str) -> str:
+    def _generate_extractive(
+        self,
+        user_prompt: str,
+        *,
+        provider_failed: str | None = None,
+        error: str | None = None,
+    ) -> str:
         """Deterministic, no-LLM fallback.
 
         The orchestrator embeds the numbered context blocks inside user_prompt.
@@ -146,7 +175,17 @@ class LLMRouter:
             context = context.split("QUESTION:", 1)[0].strip()
         else:
             context = user_prompt.strip()
-        return (
-            "No LLM is configured, so here are the most relevant passages "
-            "from your documents (cited below):\n\n" + context
-        )
+
+        if provider_failed:
+            intro = (
+                f"The '{provider_failed}' provider was unavailable"
+                + (f" ({error})" if error else "")
+                + ", and the local fallback also failed or was not reachable. "
+                "Here are the most relevant passages from your documents (cited below):\n\n"
+            )
+        else:
+            intro = (
+                "No LLM is configured, so here are the most relevant passages "
+                "from your documents (cited below):\n\n"
+            )
+        return intro + context

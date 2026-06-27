@@ -120,6 +120,21 @@ class VectorStore:
             hits.append(SearchHit(chunk=self._metadata[idx], score=float(score)))
         return hits
 
+    def vectors_for(self, chunk_ids: list[str]) -> dict[str, np.ndarray]:
+        """Reconstruct stored (normalised) embeddings for the given chunk ids.
+
+        Used by diversity reranking (MMR) to compute chunk-to-chunk similarity
+        without re-embedding text.
+        """
+        with self._lock:
+            id_to_row = {c.id: row for row, c in enumerate(self._metadata)}
+            out: dict[str, np.ndarray] = {}
+            for cid in chunk_ids:
+                row = id_to_row.get(cid)
+                if row is not None:
+                    out[cid] = self._index.reconstruct(row).astype("float32")
+            return out
+
     # ── Introspection ────────────────────────────────────────
     @property
     def num_chunks(self) -> int:

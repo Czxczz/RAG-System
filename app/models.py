@@ -35,7 +35,7 @@ class ChatRequest(BaseModel):
         ),
     )
     top_k: Optional[int] = Field(
-        default=5, ge=1, le=20, description="Override number of chunks to retrieve."
+        default=3, ge=1, le=20, description="Override number of chunks to retrieve."
     )
 
 

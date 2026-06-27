@@ -94,9 +94,15 @@ class EmbeddingService:
 
     def embed_query(self, text: str) -> np.ndarray:
         """Embed a single query, returning a 1-D float32 vector."""
+        return self.embed_queries([text])[0]
+
+    def embed_queries(self, texts: list[str]) -> np.ndarray:
+        """Embed multiple queries (uses query-side encoding for local models)."""
+        if not texts:
+            return np.zeros((0, self.dimension), dtype="float32")
         if self.provider == "local":
-            return _normalize(self._encode_local([text], for_query=True))[0]
-        return self.embed_texts([text])[0]
+            return _normalize(self._encode_local(texts, for_query=True))
+        return self.embed_texts(texts)
 
 
 @lru_cache
