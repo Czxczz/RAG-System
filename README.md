@@ -16,26 +16,27 @@ answers with citations**, powered by a **local or cloud LLM** of your choice.
 | Knowledge scattered across files | Unify all documents into one AI interface |
 | Keyword search misses meaning | Semantic (vector) search over your content |
 | LLMs hallucinate | Grounded-by-default RAG + inline citations |
-| Privacy concerns with cloud AI | Hybrid local (Ollama) / cloud (OpenAI) routing |
+| Privacy concerns with cloud AI | Hybrid routing: Ollama (local) / OpenAI / Gemini (cloud) |
+| Retrieved chunks repeat the same facts | Layered dedup: MMR + hard cosine cap + text overlap filter |
 
 ---
 
 ## Architecture
 
 ```
-Frontend (v2)  ─►  FastAPI Gateway  ─►  RAG Orchestrator (core brain)
+Client (HTTP)  ─►  FastAPI Gateway  ─►  RAG Orchestrator (core brain)
                                           │
                         ┌─────────────────┴──────────────────┐
                         ▼                                     ▼
                  Ingestion Pipeline                     Query Engine
-              (extract→clean→chunk→embed)         (embed→FAISS search→rank)
+              (extract→clean→chunk→embed)    (rewrite→search→rerank→dedup)
                         │                                     │
                         ▼                                     ▼
                  Embedding Service  ◄────────────────►  Vector DB (FAISS)
                                                               │
                                                               ▼
                                                        LLM Router
-                                                   (local / cloud / auto)
+                                              (OpenAI / Gemini / Ollama / extractive)
                                                               │
                                                               ▼
                                                 Grounded answer + citations
@@ -52,18 +53,31 @@ app/
 ├── models.py            # Pydantic request/response schemas
 ├── dependencies.py      # Composition root (singletons)
 ├── api/routes.py        # HTTP endpoints
+├── eval/                # Offline eval schemas, metrics, runner
 └── core/
-    ├── ingestion.py     # load → extract → clean → chunk
-    ├── embeddings.py    # local (sentence-transformers) | OpenAI
-    ├── vector_store.py  # FAISS index + persisted metadata
+    ├── ingestion.py        # load → extract → clean → chunk
+    ├── embeddings.py       # local (sentence-transformers) | OpenAI
+    ├── vector_store.py     # FAISS index + persisted metadata
     ├── query_rewriter.py   # multi-query expansion (LLM + heuristic)
-    ├── query_engine.py  # retrieval pipeline orchestration
-    ├── reranker.py      # cross-encoder second-stage scoring
-    ├── diversity.py        # MMR diversity-aware reranking
-    ├── context_grouping.py # group chunks by source for coherent context
-    ├── llm_router.py    # OpenAI / Gemini / Ollama / extractive fallback
-    ├── registry.py      # document catalogue
-    └── orchestrator.py  # the core brain
+    ├── query_engine.py     # retrieval pipeline orchestration
+    ├── reranker.py         # cross-encoder second-stage scoring
+    ├── diversity.py        # MMR + hard dedup + text Jaccard dedupe
+    ├── context_grouping.py # group chunks by source, trim overlap
+    ├── llm_router.py       # OpenAI / Gemini / Ollama / extractive fallback
+    ├── registry.py         # document catalogue
+    └── orchestrator.py     # the core brain
+
+eval/
+├── dataset.ec2.json     # Labeled EC2 user guide eval set (10 cases)
+├── report.ec2.json      # Latest eval report (example output)
+└── report.before.json   # Baseline before redundancy tuning
+
+scripts/
+├── run_eval.py          # Offline eval harness (in-process, not HTTP)
+├── diagnose_retrieval.py # Evidence-based retrieval diagnosis
+├── tune_mmr.py          # Sweep MMR lambda / dedup threshold
+├── compact_index.py     # Remove exact-duplicate chunks from FAISS index
+└── setup_ollama.sh      # Pull recommended Ollama model
 ```
 
 ---
@@ -96,7 +110,7 @@ Defaults work with **zero configuration**: local embeddings
   ./scripts/setup_ollama.sh          # pulls qwen2.5:3b (best for 8 GB RAM)
   ```
 
-  Set `LLM_PROVIDER=ollama` in `.env`, or use `--mode ollama` on `/chat` and eval.
+  Set `LLM_PROVIDER=ollama` in `.env`, or use `"mode": "ollama"` on `/chat` and eval.
 
 ### 3. Run
 
@@ -136,7 +150,7 @@ Response:
 {
   "answer": "The key findings are ... [1][2]",
   "grounded": true,
-  "provider": "openai",
+  "provider": "gemini",
   "citations": [
     {"marker": 1, "filename": "notes.pdf", "score": 0.71, "snippet": "..."}
   ]
@@ -151,6 +165,7 @@ Response:
   **"I couldn't find anything relevant…"** and never calls the LLM.
 - The system prompt forbids outside knowledge and requires inline `[n]`
   citations mapping to retrieved passages.
+- Cloud LLM failures cascade: **OpenAI / Gemini → Ollama → extractive** fallback.
 
 ---
 
@@ -163,23 +178,26 @@ See [`.env.example`](.env.example). Key settings:
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
 | `LOCAL_EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Hugging Face model for local embeddings |
 | `LLM_PROVIDER` | `auto` | `auto` / `openai` / `gemini` / `ollama` / `extractive` |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | — / `gemini-2.5-flash` | Google Gemini cloud |
+| `OLLAMA_MODEL` | `qwen2.5:3b` | Local model (recommended for 8 GB RAM) |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | Chunking (characters) |
-| `TOP_K` | `5` | Chunks sent to the LLM after reranking |
+| `TOP_K` | `3` | Chunks sent to the LLM after reranking |
 | `MIN_SCORE` | `0.20` | Cosine threshold before reranking |
 | `RERANK_ENABLED` | `true` | Enable cross-encoder reranking |
 | `RETRIEVE_K` | `20` | FAISS candidate pool when reranking is on |
-| `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder model |
 | `QUERY_REWRITE_ENABLED` | `true` | Multi-query expansion of the question |
-| `QUERY_REWRITE_NUM_VARIANTS` | `3` | Extra query variants beyond the original |
-| `QUERY_REWRITE_USE_LLM` | `true` | Use the LLM for paraphrases (else heuristic) |
+| `QUERY_REWRITE_USE_LLM` | `true` | LLM paraphrases (else heuristic fallback) |
 | `MMR_ENABLED` | `true` | Diversity-aware (MMR) reranking |
-| `MMR_LAMBDA` | `0.7` | Relevance↔diversity trade-off (1.0…0.0) |
+| `MMR_LAMBDA` | `0.6` | Relevance↔diversity trade-off (tuned on EC2 eval) |
+| `MMR_DEDUP_THRESHOLD` | `0.85` | Hard cap: drop chunks with cosine ≥ this to a kept chunk |
+| `TEXT_DEDUPE_ENABLED` | `true` | Word-overlap text filter after MMR |
+| `TEXT_DEDUPE_JACCARD` | `0.85` | Jaccard threshold for near-identical text |
 | `CONTEXT_GROUPING_ENABLED` | `true` | Group context by source in reading order |
 
 ### Retrieval pipeline
 
-Precision and context coherence are improved with three stages on top of
-vector search:
+Precision, diversity, and context coherence are improved with a multi-stage
+pipeline on top of vector search:
 
 ```
 query
@@ -187,37 +205,53 @@ query
   → embed + FAISS top RETRIEVE_K .. per variant, fused by max-cosine
   → filter MIN_SCORE
   → cross-encoder rerank .......... joint (query, chunk) relevance
-  → MMR diversity rerank .......... drop near-duplicates, keep top TOP_K
-  → context grouping .............. group by source, reading order, dedupe overlap
+  → MMR diversity rerank .......... λ·relevance − (1−λ)·redundancy
+  → hard cosine dedup ............. drop chunks ≥ MMR_DEDUP_THRESHOLD to a kept chunk
+  → text dedupe ................... drop exact / high Jaccard overlap passages
+  → context grouping .............. group by source, reading order, trim overlap
   → LLM (grounded answer + [n] citations)
 ```
 
 - **Query rewriting** lifts recall by retrieving for several phrasings, then
   fuses the pools (each chunk keeps its best cosine score).
-- **MMR** maximises `λ·relevance − (1−λ)·redundancy`, so the final set is
-  relevant *and* non-redundant.
-- **Context grouping** presents same-document chunks together in reading order
-  and removes overlapping text, while preserving each chunk's `[n]` citation.
+- **MMR + hard dedup** keeps relevant chunks while suppressing near-duplicates
+  in embedding space; **text dedupe** catches copy-paste boilerplate MMR misses.
+- **Context grouping** presents same-document chunks together in reading order,
+  trims overlapping text (sentence + character boundary), and preserves each
+  chunk's `[n]` citation marker.
+
+### Index maintenance
+
+Large PDFs (e.g. AWS user guides) can produce repeated headers/footers across
+chunks. Ingest skips exact duplicate text; for an existing index:
+
+```bash
+python scripts/compact_index.py
+```
 
 ---
 
-## Roadmap (v2+)
+## Roadmap
 
 - [x] Cross-encoder reranking
 - [x] Query rewriting (multi-query)
-- [x] Diversity-aware reranking (MMR)
-- [x] Context grouping
+- [x] Diversity-aware reranking (MMR + hard dedup + text dedupe)
+- [x] Context grouping with overlap trimming
+- [x] Hybrid LLM routing (OpenAI / Gemini / Ollama / extractive)
+- [x] Offline eval suite with redundancy metric
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
 - [ ] Streaming responses
 - [ ] Per-document / per-collection scoping
+- [ ] Answer validation gate before returning to client
 
 ---
 
 ## Evaluation
 
-Offline scoring for retrieval and answer quality. You need a **labeled JSON dataset**
-(`eval/dataset.example.json` is a starter set for the employee handbook).
+Offline scoring runs the **same in-process pipeline** as `/chat` (no HTTP server
+required). The default dataset is the EC2 user guide (`eval/dataset.ec2.json`, 10
+cases: 8 answerable + 2 refusal).
 
 Metrics:
 
@@ -225,19 +259,43 @@ Metrics:
 | --- | --- |
 | `precision@k` | Share of top-k retrieved chunks that match `relevant_keywords` |
 | `recall@k` | Share of `relevant_keywords` found in top-k chunk text |
+| `redundancy` | Max pairwise cosine similarity among final chunks (lower = more diverse) |
 | `hallucination_rate` | Answers that fail refusal rules or invent facts/numbers |
 | `citation_accuracy` | Share of `[n]` markers that map to a supporting chunk |
 | `answer_keyword_recall` | Expected answer phrases present in the response |
 | `refusal_accuracy` | Correct "not found" behavior on out-of-corpus questions |
 
-Run:
+**Target redundancy** on a single large PDF: aggregate **0.75–0.82** while
+keeping recall@k ≥ 0.8.
+
+Run all cases:
 
 ```bash
-python scripts/run_eval.py --dataset eval/dataset.example.json --mode gemini
-python scripts/run_eval.py --dataset eval/dataset.example.json --output eval/report.json
+python scripts/run_eval.py --mode gemini --no-rewrite-llm
+python scripts/run_eval.py --mode ollama --no-rewrite-llm
 ```
 
-Add your own cases by copying the example format in `eval/dataset.example.json`.
+Run one case at a time and merge into a report (useful on slow hardware or rate-limited APIs):
+
+```bash
+python scripts/run_eval.py --list-cases
+
+python scripts/run_eval.py --case-id imdsv2-require --mode gemini --append -v
+python scripts/run_eval.py --case-id insufficient-capacity --mode gemini --append -v
+# … repeat for each case id
+```
+
+Useful flags: `--output eval/report.ec2.json`, `--top-k 3`, `--no-rewrite-llm`,
+`--sleep-seconds 15` (Gemini rate limits).
+
+Diagnostic and tuning tools:
+
+```bash
+python scripts/diagnose_retrieval.py   # retrieval gap analysis
+python scripts/tune_mmr.py           # sweep MMR lambda / dedup threshold
+```
+
+Add your own cases by copying the format in `eval/dataset.ec2.json`.
 
 ---
 
