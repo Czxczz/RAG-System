@@ -135,6 +135,28 @@ class VectorStore:
                     out[cid] = self._index.reconstruct(row).astype("float32")
             return out
 
+    def compact_exact_duplicates(self) -> int:
+        """Remove chunks with identical normalized text; rebuild the index."""
+        with self._lock:
+            seen: set[str] = set()
+            keep: list[StoredChunk] = []
+            for chunk in self._metadata:
+                key = " ".join(chunk.text.lower().split())
+                if key in seen:
+                    continue
+                seen.add(key)
+                keep.append(chunk)
+            removed = len(self._metadata) - len(keep)
+            if removed == 0:
+                return 0
+            kept_vectors = self._reconstruct(keep)
+            self._reset()
+            if kept_vectors is not None and kept_vectors.shape[0] > 0:
+                self._index.add(kept_vectors)
+            self._metadata = keep
+            self._persist()
+            return removed
+
     # ── Introspection ────────────────────────────────────────
     @property
     def num_chunks(self) -> int:

@@ -48,14 +48,15 @@ class Settings(BaseSettings):
     # Maximal Marginal Relevance trims near-duplicate chunks while preserving
     # relevance. lambda=1.0 -> pure relevance, 0.0 -> pure diversity.
     mmr_enabled: bool = True
-    # Tuned on the EC2 user-guide eval (scripts/tune_mmr.py): lambda below 0.7
-    # hurt precision/recall, so 0.6 + a 0.88 dedup cap gave the lowest
-    # redundancy that still preserved baseline precision (0.925) and recall.
+    # Tuned on EC2 eval (scripts/tune_mmr.py): lambda below 0.6 hurt recall;
+    # 0.85 dedup + 0.6 lambda balances redundancy vs precision better than 0.88.
     mmr_lambda: float = 0.6
-    # Hard cap on redundancy: a candidate whose cosine to an already-selected
-    # chunk is >= this is dropped outright (kills near/exact duplicates that a
-    # soft MMR penalty alone lets through). 1.0 disables the hard filter.
-    mmr_dedup_threshold: float = 0.88
+    # Hard cap: skip chunks whose embedding cosine to a kept chunk >= this.
+    # Required — soft MMR alone keeps near-duplicates when relevance is high.
+    mmr_dedup_threshold: float = 0.85
+    # After MMR, drop chunks with near-identical text (catches exact PDF boilerplate).
+    text_dedupe_enabled: bool = True
+    text_dedupe_jaccard: float = 0.85  # word-overlap threshold; 1.0 = exact text only
 
     # ── Context grouping ─────────────────────────────────────
     # Group selected chunks by source document in reading order (and drop

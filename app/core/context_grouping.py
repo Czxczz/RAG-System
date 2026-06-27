@@ -61,30 +61,51 @@ def _split_sentences(text: str) -> list[str]:
     return [p for p in parts if p]
 
 
+def _boundary_overlap_trim(previous_text: str, current_text: str, min_chars: int = 40) -> str:
+    """Trim leading chars of `current` when they repeat the tail of `previous`."""
+    prev = previous_text.strip()
+    curr = current_text.strip()
+    if not prev or not curr:
+        return current_text
+
+    max_check = min(len(prev), len(curr), 600)
+    for size in range(max_check, min_chars - 1, -1):
+        if prev[-size:] == curr[:size]:
+            trimmed = curr[size:].lstrip()
+            return trimmed or current_text
+    return current_text
+
+
 def _dedupe_overlap(previous: SearchHit, current: SearchHit) -> str:
-    """Drop leading sentences of `current` that repeat the tail of `previous`.
+    """Drop leading content of `current` that repeats the tail of `previous`.
 
-    Only applied to adjacent chunks (consecutive index, same document), which
-    is exactly where the ingestion overlap window creates duplicate text.
+    Applied to adjacent chunks (consecutive index, same document) and also
+    uses character-level boundary matching for partial overlap.
     """
-    if (
-        previous.chunk.document_id != current.chunk.document_id
-        or current.chunk.chunk_index != previous.chunk.chunk_index + 1
-    ):
+    if previous.chunk.document_id != current.chunk.document_id:
         return current.chunk.text
 
-    prev_sentences = _split_sentences(previous.chunk.text)
-    curr_sentences = _split_sentences(current.chunk.text)
-    if not prev_sentences or not curr_sentences:
-        return current.chunk.text
+    # Exact duplicate body — skip entirely (marker still maps to chunk metadata).
+    if _normalize_text(previous.chunk.text) == _normalize_text(current.chunk.text):
+        return ""
 
-    prev_tail = set(prev_sentences[-5:])
-    start = 0
-    while start < len(curr_sentences) and curr_sentences[start] in prev_tail:
-        start += 1
+    if current.chunk.chunk_index == previous.chunk.chunk_index + 1:
+        prev_sentences = _split_sentences(previous.chunk.text)
+        curr_sentences = _split_sentences(current.chunk.text)
+        if prev_sentences and curr_sentences:
+            prev_tail = set(prev_sentences[-5:])
+            start = 0
+            while start < len(curr_sentences) and curr_sentences[start] in prev_tail:
+                start += 1
+            trimmed = " ".join(curr_sentences[start:]).strip()
+            if trimmed:
+                return _boundary_overlap_trim(previous.chunk.text, trimmed)
 
-    trimmed = " ".join(curr_sentences[start:]).strip()
-    return trimmed or current.chunk.text
+    return _boundary_overlap_trim(previous.chunk.text, current.chunk.text)
+
+
+def _normalize_text(text: str) -> str:
+    return " ".join(text.lower().split())
 
 
 def build_grouped_context(
@@ -105,6 +126,8 @@ def build_grouped_context(
         prev: SearchHit | None = None
         for hit in group.hits:
             text = _dedupe_overlap(prev, hit) if prev else hit.chunk.text
+            if not text.strip():
+                text = f"(See preceding passage [{marker - 1}] for full text.)"
             loc = f"p.{hit.chunk.page}" if hit.chunk.page is not None else f"chunk {hit.chunk.chunk_index}"
             lines.append(f"[{marker}] ({loc})\n{text}")
             ordered.append(hit)

@@ -105,6 +105,10 @@ class RAGOrchestrator:
             )
             for c in chunks
         ]
+        stored = _drop_exact_duplicate_chunks(stored)
+        if not stored:
+            raise ValueError("No unique text chunks found after de-duplication.")
+
         vectors = self.embeddings.embed_texts([c.text for c in stored])
         self.store.add(vectors, stored)
 
@@ -155,3 +159,16 @@ class RAGOrchestrator:
             f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
             "Answer with inline [n] citations."
         )
+
+
+def _drop_exact_duplicate_chunks(chunks: list[StoredChunk]) -> list[StoredChunk]:
+    """Skip chunks whose normalized text was already seen in this ingest batch."""
+    seen: set[str] = set()
+    kept: list[StoredChunk] = []
+    for chunk in chunks:
+        key = " ".join(chunk.text.lower().split())
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(chunk)
+    return kept

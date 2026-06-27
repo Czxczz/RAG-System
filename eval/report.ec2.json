@@ -1,21 +1,21 @@
 {
   "dataset": "ec2-user-guide",
-  "mode": "ollama",
+  "mode": "gemini",
   "top_k": 3,
   "num_cases": 10,
-  "precision_at_k": 0.76,
-  "recall_at_k": 0.8,
-  "hallucination_rate": 0.5,
-  "citation_accuracy": 0.73,
-  "answer_keyword_recall": 0.8,
-  "refusal_accuracy": 0.5,
-  "redundancy": 0.8432173669338227,
+  "precision_at_k": 0.74,
+  "recall_at_k": 0.78,
+  "hallucination_rate": 0.3,
+  "citation_accuracy": 1.0,
+  "answer_keyword_recall": 1.0,
+  "refusal_accuracy": 1.0,
+  "redundancy": 0.7960158109664917,
   "cases": [
     {
       "case_id": "imdsv2-require",
       "query": "How do I require the use of IMDSv2 on my EC2 instances?",
-      "answer": "To require the use of IMDSv2 on your EC2 instances, you can follow these steps:\n\n1. **Update Software to IMDSv2 Compatible Versions**: Ensure all SDKs, CLIs, and software that use Role credentials are updated to compatible versions with IMDSv2 [1].\n\n2. **Require IMDSv2 on Instances**:\n   - For new instances: Use the `aws ec2 run-instances` command with specific metadata options like `HttpEndpoint=enabled`, `HttpTokens=required`, and `HttpPutResponseHopLimit=2`. Alternatively, you can use PowerShell to launch a new instance with these settings [2].\n   - For existing instances:\n     - Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/.\n     - In the navigation pane, choose Instances.\n     - Select your instance and then choose Actions, Instance settings, Modify instance metadata options.\n     - Enable Instance metadata service and set IMDSv2 to Required. Save these changes [3].\n\nAdditionally, you can enforce this setting using an IAM policy or modify default instance metadata options:\n\n- **Using Policy**: Specify that the RunInstances API call requires instances to be opted in for IMDSv2 [4].\n- **Using Console**: Disable enforcement of IMDSv2 at the account level if needed [5].",
-      "provider": "ollama",
+      "answer": "You can require the use of IMDSv2 on your EC2 instances in several ways:\n\n*   **For an existing instance:**\n    *   Open the Amazon EC2 console, navigate to \"Instances,\" select your instance, then choose \"Actions,\" \"Instance settings,\" and \"Modify instance metadata options\" [2]. In the dialog box, select \"Enable\" for \"Instance metadata service\" and \"Required\" for \"IMDSv2,\" then \"Save\" [2].\n    *   Alternatively, use the AWS CLI [2].\n    *   An instance is ready to require IMDSv2 when `MetadataNoToken` records zero IMDSv1 usage for it [2].\n*   **As an account-level default for all Regions:** Use the `Edit-EC2InstanceMetadataDefault` cmdlet. Include `-HttpToken set to required` and `-HttpPutResponseHopLimit set to 2` if instances will host containers, otherwise specify `-1` for no preference [1].\n*   **Using launch templates:** If your account includes a policy that enforces IMDSv2 for Amazon EC2 instances, you must create a launch template that specifies the metadata configuration to enforce IMDSv2 [3].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
@@ -24,60 +24,58 @@
         "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
-        "retrieved_relevant": 5,
-        "retrieved_total": 5,
-        "redundancy": 0.8725326061248779
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.7895965576171875
       },
       "notes": [],
-      "elapsed_seconds": 292.7
+      "elapsed_seconds": 8.7
     },
     {
       "case_id": "insufficient-capacity",
       "query": "What does the InsufficientInstanceCapacity error mean and how do I resolve it?",
-      "answer": "The InsufficientInstanceCapacity error means that AWS currently has insufficient available On-Demand capacity to fulfill your request for launching a new instance or restarting a stopped instance [5]. To resolve this issue, you can try waiting a few minutes and then submitting your request again; capacity can shift frequently [5]. Additionally, if the error persists, you may need to increase the instance limit on a per-region basis by requesting an instance limit increase on Amazon EC2 service quotas [n] (p.3608).",
-      "provider": "ollama",
+      "answer": "The `InsufficientInstanceCapacity` error occurs when you try to launch a new instance or restart a stopped instance [5]. This error indicates that AWS does not currently have enough available On-Demand capacity to fulfill your request [5].\n\nTo resolve this issue, you can wait a few minutes and then submit your request again, as capacity can shift frequently [5].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
-        "precision_at_k": 1.0,
+        "precision_at_k": 0.8,
         "recall_at_k": 1.0,
-        "hallucination": true,
+        "hallucination": false,
         "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
-        "retrieved_relevant": 5,
+        "retrieved_relevant": 4,
         "retrieved_total": 5,
-        "redundancy": 0.8215417265892029
+        "redundancy": 0.8131402134895325
       },
-      "notes": [
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 157.2
+      "notes": [],
+      "elapsed_seconds": 10.1
     },
     {
       "case_id": "placement-strategies",
       "query": "What placement group strategies does EC2 support?",
-      "answer": "[1], [2], [3], [4], [5] EC2 supports three placement group strategies: Cluster, Partition, and Spread.",
-      "provider": "ollama",
+      "answer": "EC2 supports the following placement strategies for placement groups: Cluster placement groups, Partition placement groups, and Spread placement groups [3].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
-        "precision_at_k": 1.0,
+        "precision_at_k": 0.8,
         "recall_at_k": 1.0,
         "hallucination": false,
-        "citation_accuracy": 0.8,
+        "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
-        "retrieved_relevant": 5,
+        "retrieved_relevant": 4,
         "retrieved_total": 5,
-        "redundancy": 0.874198317527771
+        "redundancy": 0.8199141025543213
       },
       "notes": [],
-      "elapsed_seconds": 179.2
+      "elapsed_seconds": 7.5
     },
     {
       "case_id": "security-group-inbound",
       "query": "How do I allow inbound network traffic to my instance?",
-      "answer": "To allow inbound network traffic to your instance, you can configure security groups and route tables as described in the documents. For example, under Firewall (security groups), from the drop-down list next to the Allow SSH traffic from checkbox, choose My IP. Additionally, select checkboxes for allowing HTTPs and HTTP traffic from the internet. [4]",
-      "provider": "ollama",
+      "answer": "To allow inbound network traffic to your instance, you can configure security group rules and network access control lists (ACLs):\n\n*   **Security Group Rules**\n    *   By default, when an instance is launched, a new security group is created with a rule that allows inbound SSH traffic from anywhere [3].\n    *   To restrict inbound connection traffic to a specific network, choose \"Custom\" instead of \"Anywhere\" and enter the CIDR block for your network [1].\n    *   To ensure only your IP address can connect via SSH, choose \"My IP\" from the drop-down list next to the \"Allow SSH traffic from\" checkbox [3].\n    *   For a Linux instance, you must allow SSH traffic, and for a Windows instance, you must allow RDP traffic [1].\n    *   You can also select checkboxes to allow HTTPs traffic from the internet and HTTP traffic from the internet [3].\n    *   Additional security group rules can be configured to restrict inbound traffic, such as allowing traffic on management ports only from the EC2 Instance Connect Endpoint [2].\n    *   If using an existing security group, ensure it has a rule that allows connection traffic from your network [1].\n*   **Network ACLs**\n    *   The network ACLs for the subnet must allow inbound SSH traffic from your local IP address on port 22 [5].\n*   **VPC Configuration**\n    *   If the VPC is not configured for public internet access, you will not be able to connect to your instance [1].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
@@ -88,16 +86,16 @@
         "refused_correctly": true,
         "retrieved_relevant": 5,
         "retrieved_total": 5,
-        "redundancy": 0.8514612913131714
+        "redundancy": 0.8181780576705933
       },
       "notes": [],
-      "elapsed_seconds": 189.4
+      "elapsed_seconds": 12.4
     },
     {
       "case_id": "elastic-ip",
       "query": "What is an Elastic IP address?",
-      "answer": "An Elastic IP address is static and is used in a specific Region only, cannot be moved to a different Region [3]. It comes from Amazon's pool of IPv4 addresses or a custom IPv4 address pool brought into your AWS account [3]. To use an Elastic IP address, you first allocate one to your account, then associate it with your instance or a network interface. When associated with an instance, it is also associated with the instance's primary network interface [3]. For more information on Elastic IP addresses, see their quota and how they can be used in a specific network border group [4].",
-      "provider": "ollama",
+      "answer": "An Elastic IP address is a static IPv4 address designed for dynamic cloud computing [1]. It is a public IPv4 address that is reachable from the internet [2]. An Elastic IP address is allocated to your AWS account and remains yours until you release it [1].\n\nIts primary purpose is to mask the failure of an instance or software by rapidly remapping the address to another instance in your account [1, 4]. You can associate an Elastic IP address with an instance to enable communication with the internet if the instance does not have a public IPv4 address [2]. An Elastic IP address is for use in a specific network border group only [3].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
@@ -108,62 +106,40 @@
         "refused_correctly": true,
         "retrieved_relevant": 5,
         "retrieved_total": 5,
-        "redundancy": 0.8683322668075562
+        "redundancy": 0.8456438779830933
       },
       "notes": [
         "Hallucination heuristic triggered."
       ],
-      "elapsed_seconds": 188.8
+      "elapsed_seconds": 9.4
     },
     {
       "case_id": "user-data-launch",
       "query": "How can I run a script automatically when my instance launches?",
-      "answer": "[3], [4]",
-      "provider": "ollama",
+      "answer": "User data scripts are run during the initial launch of an instance [4]. By default, user data scripts run one time when you launch the instance [3]. If you choose to automatically attach user data scripts, the launch instance wizard adds the user data to the instance [5]. User data scripts and cloud-init directives run during the boot cycle when you first launch an instance [2].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
-        "precision_at_k": 0.6,
+        "precision_at_k": 0.8,
         "recall_at_k": 1.0,
         "hallucination": true,
-        "citation_accuracy": 0.5,
-        "answer_keyword_recall": 0.0,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
         "refused_correctly": true,
-        "retrieved_relevant": 3,
+        "retrieved_relevant": 4,
         "retrieved_total": 5,
-        "redundancy": 0.8172080516815186
+        "redundancy": 0.8362880349159241
       },
       "notes": [
         "Hallucination heuristic triggered."
       ],
-      "elapsed_seconds": 143.6
+      "elapsed_seconds": 9.4
     },
     {
       "case_id": "t2micro-free-tier",
       "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
-      "answer": "[3] (p.2265) If your created your AWS account before July 15, 2025 and you use a t2.micro or t3.micro instance under the AWS Free Tier offer, charges might apply if your average utilization over a rolling 24-hour period exceeds the baseline utilization of the instance.",
-      "provider": "ollama",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 1.0,
-        "recall_at_k": 1.0,
-        "hallucination": true,
-        "citation_accuracy": 0.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 5,
-        "retrieved_total": 5,
-        "redundancy": 0.8718513250350952
-      },
-      "notes": [
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 226.8
-    },
-    {
-      "case_id": "spot-interruption",
-      "query": "What happens when a Spot Instance is interrupted?",
-      "answer": "When a Spot Instance is interrupted, Amazon EC2 can interrupt it based on capacity needs or price reasons. If the interruption occurs due to capacity need, your instance will be stopped or hibernated if configured so by you. If the interruption is due to price, and the Spot price exceeds your maximum price specified in the request, your instance will also be interrupted [1]. In either case, Amazon EC2 automatically handles stopping or resuming the instances as needed [1].",
-      "provider": "ollama",
+      "answer": "Yes, the t2.micro instance type can be used under the Free Tier if your AWS account was created before July 15, 2025, and is less than 12 months old [1].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
@@ -172,41 +148,61 @@
         "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
-        "retrieved_relevant": 5,
-        "retrieved_total": 5,
-        "redundancy": 0.8797532320022583
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.79206383228302
       },
       "notes": [],
-      "elapsed_seconds": 230.3
+      "elapsed_seconds": 6.7
+    },
+    {
+      "case_id": "spot-interruption",
+      "query": "What happens when a Spot Instance is interrupted?",
+      "answer": "When Amazon EC2 reclaims a Spot Instance, this event is called a Spot Instance interruption [1]. This can occur for several reasons: Amazon EC2 may need to reclaim the instance to repurpose capacity, for host maintenance, or for hardware decommission [1]. Additionally, an interruption can happen if the Spot price exceeds your specified maximum price [1].\n\nWhen an interruption is initiated, Amazon EC2 provides a two-minute notification before the instance is interrupted [2].\n\nRegarding charges for interrupted instances:\n*   If Amazon EC2 interrupts a Windows or Linux (excluding SUSE) instance, there is no charge if the interruption occurs in the first hour, and you are charged for the seconds used if it occurs after the first hour [3].\n*   For SUSE instances interrupted by Amazon EC2, there is no charge if it occurs in the first hour, and you are charged for the full hours used but not for the interrupted partial hour if it occurs after the first hour [3].\n*   While an interrupted Spot Instance is stopped, you are only charged for the preserved EBS volumes [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.8,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8217756748199463
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k.",
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 10.6
     },
     {
       "case_id": "refuse-bigquery",
       "query": "How do I configure billing alerts in Google BigQuery?",
-      "answer": "I couldn't find anything relevant in your uploaded documents to that question.",
-      "provider": "ollama",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
-        "hallucination": true,
-        "citation_accuracy": 0.0,
-        "answer_keyword_recall": 0.0,
-        "refused_correctly": false,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
         "retrieved_relevant": 0,
-        "retrieved_total": 5,
+        "retrieved_total": 3,
         "redundancy": 0.7440863847732544
       },
-      "notes": [
-        "Expected refusal but got an answer.",
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 132.2
+      "notes": [],
+      "elapsed_seconds": 8.4
     },
     {
       "case_id": "refuse-iphone",
       "query": "What is the release date of the iPhone 15?",
       "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
-      "provider": "ollama",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 0.0,
@@ -216,11 +212,11 @@
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
         "retrieved_relevant": 0,
-        "retrieved_total": 5,
-        "redundancy": 0.8312084674835205
+        "retrieved_total": 3,
+        "redundancy": 0.6794713735580444
       },
       "notes": [],
-      "elapsed_seconds": 175.9
+      "elapsed_seconds": 9.1
     }
   ]
 }

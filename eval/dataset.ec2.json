@@ -7,7 +7,7 @@
       "relevant_keywords": ["IMDSv2", "instance metadata", "token"],
       "expected_answer_keywords": ["IMDSv2"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "insufficient-capacity",
@@ -15,7 +15,7 @@
       "relevant_keywords": ["InsufficientInstanceCapacity", "capacity"],
       "expected_answer_keywords": ["capacity"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "placement-strategies",
@@ -23,7 +23,7 @@
       "relevant_keywords": ["placement group", "cluster", "spread", "partition"],
       "expected_answer_keywords": ["cluster", "spread", "partition"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "security-group-inbound",
@@ -31,7 +31,7 @@
       "relevant_keywords": ["security group", "inbound", "rule"],
       "expected_answer_keywords": ["security group"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "elastic-ip",
@@ -39,7 +39,7 @@
       "relevant_keywords": ["Elastic IP", "static", "public IPv4"],
       "expected_answer_keywords": ["static"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "user-data-launch",
@@ -47,7 +47,7 @@
       "relevant_keywords": ["user data"],
       "expected_answer_keywords": ["user data"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "t2micro-free-tier",
@@ -55,7 +55,7 @@
       "relevant_keywords": ["t2.micro", "free tier"],
       "expected_answer_keywords": ["free tier"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "spot-interruption",
@@ -63,21 +63,21 @@
       "relevant_keywords": ["spot", "interrupt", "terminate", "hibernate", "stop"],
       "expected_answer_keywords": ["interrupt"],
       "should_refuse": false,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "refuse-bigquery",
       "query": "How do I configure billing alerts in Google BigQuery?",
       "relevant_keywords": ["bigquery"],
       "should_refuse": true,
-      "top_k": 5
+      "top_k": 3
     },
     {
       "id": "refuse-iphone",
       "query": "What is the release date of the iPhone 15?",
       "relevant_keywords": ["iphone"],
       "should_refuse": true,
-      "top_k": 5
+      "top_k": 3
     }
   ]
 }

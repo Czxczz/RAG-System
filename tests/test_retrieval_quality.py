@@ -9,7 +9,7 @@ from app.core.context_grouping import (
     build_grouped_context,
     group_hits,
 )
-from app.core.diversity import mmr_order, mmr_rerank
+from app.core.diversity import dedupe_by_text, mmr_order, mmr_rerank
 from app.core.query_rewriter import QueryRewriter
 from app.core.vector_store import SearchHit, StoredChunk
 
@@ -120,6 +120,34 @@ def test_mmr_rerank_dedup_can_return_fewer_than_k():
     assert out[0].chunk.id == "docA:0"
 
 
+def test_dedupe_by_text_drops_boilerplate():
+    hits = [
+        _hit("docA", 0, "Amazon EC2 User Guide", score=1.0),
+        _hit("docA", 1, "Amazon EC2 User Guide", score=0.95),
+        _hit("docA", 2, "Instance types include t3.micro and m5.large.", score=0.8),
+    ]
+    out = dedupe_by_text(hits, jaccard_threshold=0.85)
+    assert len(out) == 2
+    assert out[0].chunk.chunk_index == 0
+    assert out[1].chunk.chunk_index == 2
+
+
+def test_dedupe_by_text_drops_high_jaccard_overlap():
+    hits = [
+        _hit("docA", 0, "Enable IMDSv2 on your instance metadata service.", score=1.0),
+        _hit(
+            "docA",
+            1,
+            "Enable IMDSv2 on your instance metadata service now.",
+            score=0.9,
+        ),
+        _hit("docA", 2, "Security groups control inbound traffic.", score=0.7),
+    ]
+    out = dedupe_by_text(hits, jaccard_threshold=0.85)
+    assert len(out) == 2
+    assert out[1].chunk.chunk_index == 2
+
+
 # ── Context grouping ─────────────────────────────────────────
 def test_group_hits_orders_by_reading_order_within_document():
     hits = [
@@ -161,6 +189,17 @@ def test_build_grouped_context_dedupes_adjacent_overlap():
     # The shared sentence should appear only once after de-duplication.
     assert context.count("Shared overlap line.") == 1
     assert "Second unique part." in context
+
+
+def test_build_grouped_context_stubs_exact_duplicate():
+    hits = [
+        _hit("docA", 0, "Same body text here."),
+        _hit("docA", 1, "Same body text here."),
+    ]
+    context, ordered = build_grouped_context(hits)
+    assert len(ordered) == 2  # citation markers preserved
+    assert context.count("Same body text here.") == 1
+    assert "See preceding passage [1]" in context
 
 
 def test_build_flat_context_is_relevance_order():

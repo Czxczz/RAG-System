@@ -11,6 +11,8 @@ relevance; lambda=0.0 to pure diversity.
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 
 from app.core.vector_store import SearchHit
@@ -99,3 +101,41 @@ def mmr_rerank(
         relevance, similarity, lambda_=lambda_, k=k, dedup_threshold=dedup_threshold
     )
     return [hits[i] for i in order]
+
+
+def _normalize_text(text: str) -> str:
+    cleaned = re.sub(r"[^\w\s]", " ", text.lower())
+    return " ".join(cleaned.split())
+
+
+def _word_jaccard(a: str, b: str) -> float:
+    wa, wb = set(_normalize_text(a).split()), set(_normalize_text(b).split())
+    if not wa or not wb:
+        return 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
+def dedupe_by_text(
+    hits: list[SearchHit],
+    *,
+    jaccard_threshold: float = 0.85,
+) -> list[SearchHit]:
+    """Drop later chunks whose text closely repeats an earlier kept chunk.
+
+    Complements MMR (embedding space) by catching exact boilerplate and
+    copy-paste passages that embeddings treat as slightly distinct.
+    """
+    if len(hits) <= 1:
+        return hits
+
+    kept: list[SearchHit] = []
+    seen_normalized: set[str] = set()
+    for hit in hits:
+        norm = _normalize_text(hit.chunk.text)
+        if norm in seen_normalized:
+            continue
+        if any(_word_jaccard(hit.chunk.text, prev.chunk.text) >= jaccard_threshold for prev in kept):
+            continue
+        kept.append(hit)
+        seen_normalized.add(norm)
+    return kept

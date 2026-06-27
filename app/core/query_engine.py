@@ -17,7 +17,7 @@ order feeds MMR directly).
 from __future__ import annotations
 
 from app.config import Settings
-from app.core.diversity import mmr_rerank
+from app.core.diversity import dedupe_by_text, mmr_rerank
 from app.core.embeddings import EmbeddingService
 from app.core.query_rewriter import QueryRewriter
 from app.core.reranker import Reranker
@@ -62,6 +62,11 @@ class QueryEngine:
                 lambda_=self.settings.mmr_lambda,
                 k=top_k,
                 dedup_threshold=self.settings.mmr_dedup_threshold,
+            )
+
+        if self.settings.text_dedupe_enabled:
+            hits = dedupe_by_text(
+                hits, jaccard_threshold=self.settings.text_dedupe_jaccard
             )
 
         return hits[:top_k]
