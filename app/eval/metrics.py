@@ -8,6 +8,9 @@ from app.core.vector_store import SearchHit
 from app.eval.schemas import CaseMetrics, EvalCase
 
 _CITATION_RE = re.compile(r"\[(\d+)\]")
+# Matches a whole citation group, e.g. "[1]", "[2, 4]", "[1,3]" — stripped before
+# number-based hallucination checks so citation markers aren't mistaken for facts.
+_CITATION_GROUP_RE = re.compile(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]")
 _NUMBER_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
 _STOPWORDS = {
     "a", "an", "the", "and", "or", "to", "of", "in", "on", "for", "is", "are",
@@ -100,8 +103,35 @@ def citation_accuracy(answer: str, hits: list[SearchHit]) -> float:
     return supported / len(markers)
 
 
+def _strip_citations(text: str) -> str:
+    """Remove inline citation markers so they aren't parsed as factual numbers."""
+    return _CITATION_GROUP_RE.sub(" ", text)
+
+
+def _number_tokens(text: str) -> set[str]:
+    return set(_NUMBER_RE.findall(text))
+
+
+def _is_year(token: str) -> bool:
+    return token.isdigit() and len(token) == 4 and "1900" <= token <= "2099"
+
+
 def is_hallucination(answer: str, hits: list[SearchHit], case: EvalCase) -> bool:
-    """Heuristic hallucination check without an external judge."""
+    """Heuristic hallucination check without an external judge.
+
+    Two signals, both designed to minimise false positives:
+
+    * a *forbidden* keyword appears in the answer but not in the retrieved
+      context (an explicit, per-case red flag), or
+    * the answer states a numeric fact that appears nowhere in the retrieved
+      context. Citation markers (``[1]``, ``[2, 4]``) are stripped first so they
+      are not mistaken for facts, and 4-digit years are ignored (they are rarely
+      fabricated and often reflect formatting differences).
+
+    Numbers are compared as whole tokens against the set of numbers in context,
+    rather than substring matching, so ``14`` is not silently "found" inside
+    ``2014``.
+    """
     refused = _is_refusal(answer)
 
     if case.should_refuse:
@@ -111,14 +141,18 @@ def is_hallucination(answer: str, hits: list[SearchHit], case: EvalCase) -> bool
         return False
 
     context = _context_text(hits).lower()
-    answer_lower = answer.lower()
+    answer_no_cite = _strip_citations(answer)
+    answer_lower = answer_no_cite.lower()
 
     for keyword in case.forbidden_answer_keywords:
         if _contains_keyword(answer_lower, keyword) and not _contains_keyword(context, keyword):
             return True
 
-    for number in _NUMBER_RE.findall(answer):
-        if number not in context:
+    context_numbers = _number_tokens(context)
+    for number in _number_tokens(answer_no_cite):
+        if _is_year(number):
+            continue
+        if number not in context_numbers:
             return True
 
     return False

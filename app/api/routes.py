@@ -118,4 +118,5 @@ def chat(
         grounded=result.grounded,
         provider=result.provider,
         citations=citations,
+        validation_notes=result.validation_notes,
     )

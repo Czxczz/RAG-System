@@ -66,6 +66,126 @@
       "top_k": 3
     },
     {
+      "id": "key-pair-create",
+      "query": "How do I create a key pair for my EC2 instance?",
+      "relevant_keywords": ["key pair", "create", "private key"],
+      "expected_answer_keywords": ["key pair"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "stop-vs-terminate",
+      "query": "What is the difference between stopping and terminating an instance?",
+      "relevant_keywords": ["stop", "terminate"],
+      "expected_answer_keywords": ["terminate"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "ebs-volume-attach",
+      "query": "How do I attach an EBS volume to an EC2 instance?",
+      "relevant_keywords": ["volume", "attach"],
+      "expected_answer_keywords": ["volume"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "ami-create",
+      "query": "How do I create an Amazon Machine Image (AMI) from an instance?",
+      "relevant_keywords": ["AMI", "image", "create"],
+      "expected_answer_keywords": ["AMI"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "instance-hibernate",
+      "query": "How does hibernation work for EC2 instances?",
+      "relevant_keywords": ["hibernat", "RAM", "memory"],
+      "expected_answer_keywords": ["hibernat"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "connect-ssh",
+      "query": "How do I connect to my Linux instance using SSH?",
+      "relevant_keywords": ["SSH", "connect"],
+      "expected_answer_keywords": ["SSH"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "instance-tags",
+      "query": "How do I add tags to my EC2 resources?",
+      "relevant_keywords": ["tag"],
+      "expected_answer_keywords": ["tag"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "status-checks",
+      "query": "What are the status checks for an EC2 instance?",
+      "relevant_keywords": ["status check"],
+      "expected_answer_keywords": ["status check"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "termination-protection",
+      "query": "How do I enable termination protection for an instance?",
+      "relevant_keywords": ["termination protection"],
+      "expected_answer_keywords": ["termination protection"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "monitoring-cloudwatch",
+      "query": "How do I monitor my EC2 instances with CloudWatch?",
+      "relevant_keywords": ["CloudWatch", "monitor"],
+      "expected_answer_keywords": ["CloudWatch"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "ondemand-vs-spot",
+      "query": "What is the difference between On-Demand Instances and Spot Instances?",
+      "relevant_keywords": ["On-Demand", "Spot"],
+      "expected_answer_keywords": ["Spot"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "instance-type-categories",
+      "query": "What categories of instance types does EC2 offer?",
+      "relevant_keywords": ["instance type", "compute", "memory"],
+      "expected_answer_keywords": ["instance type"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "imdsv2-paraphrase",
+      "query": "How can I enforce token-based access to instance metadata?",
+      "relevant_keywords": ["IMDSv2", "token", "metadata"],
+      "expected_answer_keywords": ["IMDSv2"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "elastic-ip-paraphrase",
+      "query": "How do I get a fixed public IP address that stays with my account?",
+      "relevant_keywords": ["Elastic IP", "static", "allocate"],
+      "expected_answer_keywords": ["Elastic IP"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "launch-and-secure-multistep",
+      "query": "How do I launch an instance and restrict SSH access to only my IP address?",
+      "relevant_keywords": ["launch", "security group", "SSH", "My IP"],
+      "expected_answer_keywords": ["security group"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
       "id": "refuse-bigquery",
       "query": "How do I configure billing alerts in Google BigQuery?",
       "relevant_keywords": ["bigquery"],
@@ -76,6 +196,27 @@
       "id": "refuse-iphone",
       "query": "What is the release date of the iPhone 15?",
       "relevant_keywords": ["iphone"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "refuse-s3-lifecycle",
+      "query": "How do I configure an S3 bucket lifecycle policy?",
+      "relevant_keywords": ["s3 bucket lifecycle"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "refuse-rds-backup",
+      "query": "How do I schedule automated backups for an Amazon RDS database?",
+      "relevant_keywords": ["rds"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "refuse-lambda-memory",
+      "query": "How do I set the memory size for an AWS Lambda function?",
+      "relevant_keywords": ["lambda function"],
       "should_refuse": true,
       "top_k": 3
     }

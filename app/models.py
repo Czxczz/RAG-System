@@ -50,9 +50,19 @@ class Citation(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    grounded: bool = Field(..., description="False when no relevant context was found.")
+    grounded: bool = Field(
+        ...,
+        description=(
+            "False when no relevant context was found, or when the answer "
+            "failed post-generation citation validation."
+        ),
+    )
     provider: str = Field(..., description="LLM provider that produced the answer.")
     citations: list[Citation]
+    validation_notes: list[str] = Field(
+        default_factory=list,
+        description="Warnings from the answer validation gate, if any.",
+    )
 
 
 class HealthResponse(BaseModel):

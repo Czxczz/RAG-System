@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.config import Settings
+from app.core.answer_validation import DISCLAIMER, validate_answer
 from app.core.context_grouping import build_flat_context, build_grouped_context
 from app.core.embeddings import EmbeddingService
 from app.core.ingestion import ingest_file
@@ -58,6 +59,12 @@ class AnswerResult:
     grounded: bool
     provider: str
     hits: list[SearchHit]
+    # Set by the post-generation validation gate. ``validated`` is True when the
+    # answer's citations exist and are sufficiently supported (also True when no
+    # validation was performed, e.g. a refusal). ``validation_notes`` explains
+    # any problems found.
+    validated: bool = True
+    validation_notes: list[str] = field(default_factory=list)
 
 
 class RAGOrchestrator:
@@ -135,7 +142,9 @@ class RAGOrchestrator:
             query, top_k=k, min_score=self.settings.min_score
         )
 
-        if not hits:
+        # Retrieval confidence gate: refuse deterministically (no LLM call) when
+        # nothing was retrieved, or the best chunk is below the score threshold.
+        if not hits or self._retrieval_below_gate(hits):
             return AnswerResult(
                 answer=NOT_FOUND_MESSAGE, grounded=False, provider="none", hits=[]
             )
@@ -149,8 +158,37 @@ class RAGOrchestrator:
 
         user_prompt = self._build_prompt(query, context)
         answer, provider = self.llm.generate(SYSTEM_PROMPT, user_prompt, mode=mode)
+
+        return self._validate(answer, provider, ordered_hits)
+
+    def _retrieval_below_gate(self, hits: list[SearchHit]) -> bool:
+        if not self.settings.retrieval_gate_enabled:
+            return False
+        best = max(hit.score for hit in hits)
+        return best < self.settings.retrieval_gate_min_score
+
+    def _validate(
+        self, answer: str, provider: str, ordered_hits: list[SearchHit]
+    ) -> AnswerResult:
+        """Run the answer validation gate (if enabled) and assemble the result."""
+        if not self.settings.answer_validation_enabled or answer == NOT_FOUND_MESSAGE:
+            return AnswerResult(
+                answer=answer, grounded=True, provider=provider, hits=ordered_hits
+            )
+
+        result = validate_answer(
+            answer,
+            ordered_hits,
+            min_support=self.settings.answer_validation_min_support,
+        )
+        final_answer = answer if result.passed else answer + DISCLAIMER
         return AnswerResult(
-            answer=answer, grounded=True, provider=provider, hits=ordered_hits
+            answer=final_answer,
+            grounded=result.passed,
+            provider=provider,
+            hits=ordered_hits,
+            validated=result.passed,
+            validation_notes=result.notes,
         )
 
     @staticmethod

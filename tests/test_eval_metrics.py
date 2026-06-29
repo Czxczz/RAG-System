@@ -68,3 +68,43 @@ def test_citation_accuracy_valid_marker():
     hits = [_hit("annual leave 14 days 16 days 18 days", 0)]
     answer = "Employees get 14 days of annual leave [1]."
     assert citation_accuracy(answer, hits) == 1.0
+
+
+def test_citation_markers_not_flagged_as_invented_numbers():
+    # Markers [1]..[4] must not be treated as fabricated numeric facts when the
+    # underlying chunk text contains no such numbers.
+    case = EvalCase(
+        id="eip",
+        query="What is an Elastic IP address?",
+        relevant_keywords=["Elastic IP"],
+        should_refuse=False,
+    )
+    hits = [_hit("An Elastic IP address is a static public address.", 0)]
+    answer = "It is static [1]. It is reachable from the internet [2][3][4]."
+    assert is_hallucination(answer, hits, case) is False
+
+
+def test_year_in_answer_is_not_hallucination():
+    case = EvalCase(
+        id="free-tier",
+        query="Is t2.micro free tier eligible?",
+        relevant_keywords=["free tier"],
+        should_refuse=False,
+    )
+    hits = [_hit("t2.micro is free tier eligible for new accounts.", 0)]
+    answer = "Yes, if your account was created before July 15, 2025 [1]."
+    # 15 is not in context, so it still flags — but a pure-year answer should not.
+    year_only = "Eligibility started in 2025 [1]."
+    assert is_hallucination(year_only, hits, case) is False
+
+
+def test_invented_number_still_flagged():
+    case = EvalCase(
+        id="leave",
+        query="How many annual leave days?",
+        relevant_keywords=["14 days"],
+        should_refuse=False,
+    )
+    hits = [_hit("annual leave policy details without numbers", 0)]
+    answer = "Employees receive 99 days of leave [1]."
+    assert is_hallucination(answer, hits, case) is True

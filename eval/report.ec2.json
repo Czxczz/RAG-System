@@ -2,19 +2,19 @@
   "dataset": "ec2-user-guide",
   "mode": "gemini",
   "top_k": 3,
-  "num_cases": 10,
-  "precision_at_k": 0.74,
-  "recall_at_k": 0.78,
-  "hallucination_rate": 0.3,
+  "num_cases": 24,
+  "precision_at_k": 0.9305555555555557,
+  "recall_at_k": 0.9083333333333333,
+  "hallucination_rate": 0.125,
   "citation_accuracy": 1.0,
-  "answer_keyword_recall": 1.0,
-  "refusal_accuracy": 1.0,
-  "redundancy": 0.7960158109664917,
+  "answer_keyword_recall": 0.875,
+  "refusal_accuracy": 0.0,
+  "redundancy": 0.8193031549453735,
   "cases": [
     {
       "case_id": "imdsv2-require",
       "query": "How do I require the use of IMDSv2 on my EC2 instances?",
-      "answer": "You can require the use of IMDSv2 on your EC2 instances in several ways:\n\n*   **For an existing instance:**\n    *   Open the Amazon EC2 console, navigate to \"Instances,\" select your instance, then choose \"Actions,\" \"Instance settings,\" and \"Modify instance metadata options\" [2]. In the dialog box, select \"Enable\" for \"Instance metadata service\" and \"Required\" for \"IMDSv2,\" then \"Save\" [2].\n    *   Alternatively, use the AWS CLI [2].\n    *   An instance is ready to require IMDSv2 when `MetadataNoToken` records zero IMDSv1 usage for it [2].\n*   **As an account-level default for all Regions:** Use the `Edit-EC2InstanceMetadataDefault` cmdlet. Include `-HttpToken set to required` and `-HttpPutResponseHopLimit set to 2` if instances will host containers, otherwise specify `-1` for no preference [1].\n*   **Using launch templates:** If your account includes a policy that enforces IMDSv2 for Amazon EC2 instances, you must create a launch template that specifies the metadata configuration to enforce IMDSv2 [3].",
+      "answer": "You can require the use of IMDSv2 on your EC2 instances in a few ways:\n\n*   **For an existing instance using the Amazon EC2 console**:\n    1.  Open the Amazon EC2 console [3].\n    2.  In the navigation pane, choose Instances [3].\n    3.  Select your instance [3].\n    4.  Choose Actions, then Instance settings, then Modify instance metadata options [3].\n    5.  In the dialog box, select \"Enable\" for Instance metadata service, choose \"Required\" for IMDSv2, and then choose Save [3].\n*   **For an existing instance using the AWS CLI**: You can use the `metadata-options` AWS CLI command [1].\n*   **At the account level**: You can enforce the use of IMDSv2 for each AWS Region at the account level. When enforced, instances can only launch if they are configured to require IMDSv2, regardless of how the instance or AMI is configured [2]. Before enabling this, ensure your applications and AMIs support IMDSv2 [2].",
       "provider": "gemini",
       "grounded": true,
       "metrics": {
@@ -26,119 +26,35 @@
         "refused_correctly": true,
         "retrieved_relevant": 3,
         "retrieved_total": 3,
-        "redundancy": 0.7895965576171875
+        "redundancy": 0.8488125801086426
+      },
+      "notes": [],
+      "elapsed_seconds": 8.8
+    },
+    {
+      "case_id": "insufficient-capacity",
+      "query": "What does the InsufficientInstanceCapacity error mean and how do I resolve it?",
+      "answer": "The `InsufficientInstanceCapacity` error occurs when AWS does not currently have enough available On-Demand capacity to fulfill your request to launch a new instance or restart a stopped instance [3].\n\nTo resolve this issue, you can try the following:\n*   Wait a few minutes and then submit your request again, as capacity can shift frequently [3].\n*   You can also request an instance limit increase on a per-region basis [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.7814025282859802
       },
       "notes": [],
       "elapsed_seconds": 8.7
     },
     {
-      "case_id": "insufficient-capacity",
-      "query": "What does the InsufficientInstanceCapacity error mean and how do I resolve it?",
-      "answer": "The `InsufficientInstanceCapacity` error occurs when you try to launch a new instance or restart a stopped instance [5]. This error indicates that AWS does not currently have enough available On-Demand capacity to fulfill your request [5].\n\nTo resolve this issue, you can wait a few minutes and then submit your request again, as capacity can shift frequently [5].",
-      "provider": "gemini",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 0.8,
-        "recall_at_k": 1.0,
-        "hallucination": false,
-        "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 4,
-        "retrieved_total": 5,
-        "redundancy": 0.8131402134895325
-      },
-      "notes": [],
-      "elapsed_seconds": 10.1
-    },
-    {
       "case_id": "placement-strategies",
       "query": "What placement group strategies does EC2 support?",
-      "answer": "EC2 supports the following placement strategies for placement groups: Cluster placement groups, Partition placement groups, and Spread placement groups [3].",
-      "provider": "gemini",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 0.8,
-        "recall_at_k": 1.0,
-        "hallucination": false,
-        "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 4,
-        "retrieved_total": 5,
-        "redundancy": 0.8199141025543213
-      },
-      "notes": [],
-      "elapsed_seconds": 7.5
-    },
-    {
-      "case_id": "security-group-inbound",
-      "query": "How do I allow inbound network traffic to my instance?",
-      "answer": "To allow inbound network traffic to your instance, you can configure security group rules and network access control lists (ACLs):\n\n*   **Security Group Rules**\n    *   By default, when an instance is launched, a new security group is created with a rule that allows inbound SSH traffic from anywhere [3].\n    *   To restrict inbound connection traffic to a specific network, choose \"Custom\" instead of \"Anywhere\" and enter the CIDR block for your network [1].\n    *   To ensure only your IP address can connect via SSH, choose \"My IP\" from the drop-down list next to the \"Allow SSH traffic from\" checkbox [3].\n    *   For a Linux instance, you must allow SSH traffic, and for a Windows instance, you must allow RDP traffic [1].\n    *   You can also select checkboxes to allow HTTPs traffic from the internet and HTTP traffic from the internet [3].\n    *   Additional security group rules can be configured to restrict inbound traffic, such as allowing traffic on management ports only from the EC2 Instance Connect Endpoint [2].\n    *   If using an existing security group, ensure it has a rule that allows connection traffic from your network [1].\n*   **Network ACLs**\n    *   The network ACLs for the subnet must allow inbound SSH traffic from your local IP address on port 22 [5].\n*   **VPC Configuration**\n    *   If the VPC is not configured for public internet access, you will not be able to connect to your instance [1].",
-      "provider": "gemini",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 1.0,
-        "recall_at_k": 1.0,
-        "hallucination": false,
-        "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 5,
-        "retrieved_total": 5,
-        "redundancy": 0.8181780576705933
-      },
-      "notes": [],
-      "elapsed_seconds": 12.4
-    },
-    {
-      "case_id": "elastic-ip",
-      "query": "What is an Elastic IP address?",
-      "answer": "An Elastic IP address is a static IPv4 address designed for dynamic cloud computing [1]. It is a public IPv4 address that is reachable from the internet [2]. An Elastic IP address is allocated to your AWS account and remains yours until you release it [1].\n\nIts primary purpose is to mask the failure of an instance or software by rapidly remapping the address to another instance in your account [1, 4]. You can associate an Elastic IP address with an instance to enable communication with the internet if the instance does not have a public IPv4 address [2]. An Elastic IP address is for use in a specific network border group only [3].",
-      "provider": "gemini",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 1.0,
-        "recall_at_k": 1.0,
-        "hallucination": true,
-        "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 5,
-        "retrieved_total": 5,
-        "redundancy": 0.8456438779830933
-      },
-      "notes": [
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 9.4
-    },
-    {
-      "case_id": "user-data-launch",
-      "query": "How can I run a script automatically when my instance launches?",
-      "answer": "User data scripts are run during the initial launch of an instance [4]. By default, user data scripts run one time when you launch the instance [3]. If you choose to automatically attach user data scripts, the launch instance wizard adds the user data to the instance [5]. User data scripts and cloud-init directives run during the boot cycle when you first launch an instance [2].",
-      "provider": "gemini",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 0.8,
-        "recall_at_k": 1.0,
-        "hallucination": true,
-        "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 4,
-        "retrieved_total": 5,
-        "redundancy": 0.8362880349159241
-      },
-      "notes": [
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 9.4
-    },
-    {
-      "case_id": "t2micro-free-tier",
-      "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
-      "answer": "Yes, the t2.micro instance type can be used under the Free Tier if your AWS account was created before July 15, 2025, and is less than 12 months old [1].",
+      "answer": "EC2 supports the following placement group strategies: Cluster, Partition, and Spread [1].",
       "provider": "gemini",
       "grounded": true,
       "metrics": {
@@ -150,21 +66,103 @@
         "refused_correctly": true,
         "retrieved_relevant": 3,
         "retrieved_total": 3,
-        "redundancy": 0.79206383228302
+        "redundancy": 0.846706748008728
       },
       "notes": [],
-      "elapsed_seconds": 6.7
+      "elapsed_seconds": 7.3
+    },
+    {
+      "case_id": "security-group-inbound",
+      "query": "How do I allow inbound network traffic to my instance?",
+      "answer": "To allow inbound network traffic to your instance, you can configure security group rules [1, 2].\n\nBy default, when an instance is launched, a new security group is created with a rule that allows inbound SSH traffic from anywhere [3].\n\nTo restrict inbound connection traffic to a specific network, you can choose \"Custom\" instead of \"Anywhere\" and enter the CIDR block for your network [1]. Alternatively, you can select an existing security group, ensuring it has a rule that allows connection traffic from your network [1]. For a Linux instance, SSH traffic must be allowed, and for a Windows instance, RDP traffic must be allowed [1].\n\nYou can also configure additional security group rules to restrict inbound traffic, such as allowing traffic on management ports only from the EC2 Instance Connect Endpoint [2]. To ensure only your IP address can connect via SSH, you can choose \"My IP\" from the dropdown list next to the \"Allow SSH traffic from\" checkbox under Firewall (security groups) [3]. To allow traffic from the internet, you can select checkboxes for \"Allow HTTPs traffic from the internet\" and \"Allow HTTP traffic from the internet\" [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8181780576705933
+      },
+      "notes": [],
+      "elapsed_seconds": 9.4
+    },
+    {
+      "case_id": "elastic-ip",
+      "query": "What is an Elastic IP address?",
+      "answer": "An Elastic IP address is a public IPv4 address that is reachable from the internet [1]. It can be specified in a DNS record for a domain to point to an instance [1]. If an instance does not have a public IPv4 address, an Elastic IP address can be associated with it to enable communication with the internet [1]. Elastic IP addresses are considered scarce public IPv4 internet addresses [2]. They can be associated with one of the private IPv4 addresses for a network interface [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8121559619903564
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 9.3
+    },
+    {
+      "case_id": "user-data-launch",
+      "query": "How can I run a script automatically when my instance launches?",
+      "answer": "User data scripts and cloud-init directives run by default during the boot cycle when an instance is first launched [2]. Scripts in the instance user data are run during the initial launch of the instance [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6666666666666666,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 2,
+        "retrieved_total": 3,
+        "redundancy": 0.8362880349159241
+      },
+      "notes": [],
+      "elapsed_seconds": 9.8
+    },
+    {
+      "case_id": "t2micro-free-tier",
+      "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
+      "answer": "Yes, the t2.micro instance type can be used under the AWS Free Tier, provided the AWS account was created before July 15, 2025, and is less than 12 months old [2]. Instance types eligible for the Free Tier are labeled as \"Free tier eligible\" [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8170349597930908
+      },
+      "notes": [],
+      "elapsed_seconds": 7.7
     },
     {
       "case_id": "spot-interruption",
       "query": "What happens when a Spot Instance is interrupted?",
-      "answer": "When Amazon EC2 reclaims a Spot Instance, this event is called a Spot Instance interruption [1]. This can occur for several reasons: Amazon EC2 may need to reclaim the instance to repurpose capacity, for host maintenance, or for hardware decommission [1]. Additionally, an interruption can happen if the Spot price exceeds your specified maximum price [1].\n\nWhen an interruption is initiated, Amazon EC2 provides a two-minute notification before the instance is interrupted [2].\n\nRegarding charges for interrupted instances:\n*   If Amazon EC2 interrupts a Windows or Linux (excluding SUSE) instance, there is no charge if the interruption occurs in the first hour, and you are charged for the seconds used if it occurs after the first hour [3].\n*   For SUSE instances interrupted by Amazon EC2, there is no charge if it occurs in the first hour, and you are charged for the full hours used but not for the interrupted partial hour if it occurs after the first hour [3].\n*   While an interrupted Spot Instance is stopped, you are only charged for the preserved EBS volumes [3].",
+      "answer": "When Amazon EC2 reclaims a Spot Instance, this event is called a Spot Instance interruption [1]. This can happen for several reasons: Amazon EC2 might need to reclaim the instance to repurpose capacity, for host maintenance, or hardware decommission [1]. Another reason is if the Spot price exceeds your specified maximum price [1].\n\nIf you initiate a Spot Instance interruption, Amazon EC2 will notify you that the instance will be interrupted in two minutes, and then it is interrupted after two minutes [2].\n\nRegarding charges when Amazon EC2 interrupts a Spot Instance:\n*   For Windows and Linux (excluding SUSE), there is no charge if the interruption occurs in the first hour. If it's interrupted after the first hour, you are charged for the seconds used [3].\n*   For SUSE, there is no charge if interrupted in the first hour. If interrupted after the first hour, you are charged for the full hours used, but not for the interrupted partial hour [3].\n*   While an interrupted Spot Instance is stopped, you are charged only for the preserved EBS volumes [3].",
       "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
         "recall_at_k": 0.8,
-        "hallucination": true,
+        "hallucination": false,
         "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
@@ -173,50 +171,340 @@
         "redundancy": 0.8217756748199463
       },
       "notes": [
-        "Not all expected retrieval keywords found in top-k.",
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 9.0
+    },
+    {
+      "case_id": "key-pair-create",
+      "query": "How do I create a key pair for my EC2 instance?",
+      "answer": "You can create a key pair using CloudFormation by specifying the `AWS::EC2::KeyPair` resource in your template [2]. For example:\n```\nResources:\n NewKeyPair:\n Type: 'AWS::EC2::KeyPair'\n Properties:\n KeyName: new-key-pair\n```\nAfter creation, you can retrieve the ID of the key pair using the `describe-key-pairs` command [2].\n\nAlternatively, you can create a new key pair using the Amazon EC2 console or a third-party tool [3]. EC2 Instance Connect can also be used to provide access without managing SSH keys [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8189593553543091
+      },
+      "notes": [],
+      "elapsed_seconds": 9.4
+    },
+    {
+      "case_id": "stop-vs-terminate",
+      "query": "What is the difference between stopping and terminating an instance?",
+      "answer": "The main difference between stopping and terminating an instance is that a stopped instance can be easily started again later, retaining the same instance ID and root volume [2]. In contrast, a terminated instance cannot be started again; instead, a new instance must be launched [2]. When an instance is stopped or terminated, data on instance store volumes is lost [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8367815613746643
+      },
+      "notes": [],
+      "elapsed_seconds": 10.9
+    },
+    {
+      "case_id": "ebs-volume-attach",
+      "query": "How do I attach an EBS volume to an EC2 instance?",
+      "answer": "To attach an EBS volume to an EC2 instance, you can use the `Add-EC2Volume` cmdlet [1].\n\nAn example of using this cmdlet is:\n`Add-EC2Volume -InstanceId i-1234567890abcdef0 -VolumeId vol-01234567890abcdef -Device xvdh` [1].\n\nAfter attaching, you need to connect to your instance and make the volume available [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.811991810798645
+      },
+      "notes": [],
+      "elapsed_seconds": 38.5
+    },
+    {
+      "case_id": "ami-create",
+      "query": "How do I create an Amazon Machine Image (AMI) from an instance?",
+      "answer": "To create an Amazon Machine Image (AMI) from an instance, follow these steps:\n1.  Select the instance from which you want to create the AMI [2].\n2.  Choose Actions, then Image and templates, and finally Create image [2].\n    *   If the \"Create image\" option is disabled, your instance is not an Amazon EBS-backed instance [2].\n3.  On the Create image page, specify the following information:\n    *   For Image name, enter a unique name for the image, up to 127 characters [2].\n    *   For Image description, enter an optional description of the image, up to 255 characters [2].\n\nYou can also create a VSS-based AMI by setting the `CreateAmi` parameter to `True` [3]. The `executionTimeout` parameter can be used to specify the maximum time in seconds to run the snapshot creation process or to create an AMI from the instance [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.7984551191329956
+      },
+      "notes": [
         "Hallucination heuristic triggered."
       ],
-      "elapsed_seconds": 10.6
+      "elapsed_seconds": 8.5
+    },
+    {
+      "case_id": "instance-hibernate",
+      "query": "How does hibernation work for EC2 instances?",
+      "answer": "When an EC2 instance hibernates, it first moves to the stopping state [2]. Amazon EC2 then signals the operating system to perform hibernation, which involves freezing all processes, saving the contents of the RAM to the EBS root volume, and performing a regular shutdown [2]. After the shutdown is complete, the instance moves to the stopped state [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8109625577926636
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 8.6
+    },
+    {
+      "case_id": "connect-ssh",
+      "query": "How do I connect to my Linux instance using SSH?",
+      "answer": "To connect to your Linux instance using SSH, you can choose from several options after getting the required instance details, locating the private key, and setting permissions [1].\n\nOptions include:\n*   **Using an SSH client** [1]:\n    1.  Open a terminal window on your computer [2].\n    2.  Use the `ssh` command to connect to the instance, utilizing the instance details gathered as prerequisites [2].\n*   **Using PuTTY** [1].\n*   **Transferring files using SCP** [1].\n\nIf connecting from Windows using SSH, you can follow these steps from a Windows command prompt [3]:\n1.  Navigate to the file path location of your `.pem` file [3].\n2.  Run `icacls.exe $path /reset` to reset and remove explicit permissions [3].\n3.  Run `icacls.exe $path /GRANT:R \"$($env:USERNAME):(R)\"` to grant Read permissions to the current user [3].\n4.  Run `icacls.exe $path /inheritance:r` to disable inheritance and remove inherited permissions [3].\nAfter these steps, you should be able to connect to your Linux instance from Windows using SSH [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8409483432769775
+      },
+      "notes": [],
+      "elapsed_seconds": 9.3
+    },
+    {
+      "case_id": "instance-tags",
+      "query": "How do I add tags to my EC2 resources?",
+      "answer": "You can add tags to your EC2 resources using the Amazon EC2 console or the AWS CLI [1].\n\nTo add tags using the Amazon EC2 console:\n1.  Open the Amazon EC2 console at `https://console.aws.amazon.com/ec2/` [1].\n2.  Select the Region where the resource is located from the navigation bar [1].\n3.  In the navigation pane, select a resource type, such as Instances [1].\n4.  Select the specific resource from the list [1].\n5.  Go to the Tags tab and choose Manage tags [1].\n6.  Choose Add new tag, then enter a key and a value for the tag [1].\n7.  Choose Save [1].\n\nTo add tags using the AWS CLI:\nYou can add tags when creating a resource or to an existing resource [1].\n*   **On resource creation**: Use the `--tag-specifications` option, which requires the resource type, tag key, and tag value [1].\n*   **To an existing resource**: Use the `aws ec2 create-tags` command, specifying the resource ID and the tag key-value pair [2]. For example: `aws ec2 create-tags --resources i-1234567890abcdef0 --tags 'Key=\"[Group]\",Value=test'` [2]. Special characters may require escaping depending on your operating system (Windows or Windows PowerShell) [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.7978390455245972
+      },
+      "notes": [],
+      "elapsed_seconds": 9.2
+    },
+    {
+      "case_id": "status-checks",
+      "query": "What are the status checks for an EC2 instance?",
+      "answer": "Instance status checks monitor the software and network connectivity of your individual instance [1]. Amazon EC2 checks the health of the instance by sending an address resolution protocol (ARP) request to the network interface (NIC) [1]. These checks detect problems that require your involvement to repair [1].\n\nBy default, status check metrics are available at a 1-minute frequency [3]. The `StatusCheckFailed` metric reports whether the instance has passed all status checks in the last minute, with 0 indicating passed and 1 indicating failed [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8005193471908569
+      },
+      "notes": [],
+      "elapsed_seconds": 8.1
+    },
+    {
+      "case_id": "termination-protection",
+      "query": "How do I enable termination protection for an instance?",
+      "answer": "You can enable termination protection for an instance in a few ways:\n\n**At launch using the Amazon EC2 console:**\n1.  Open the Amazon EC2 console [2].\n2.  On the dashboard, choose \"Launch instance\" [2].\n3.  Expand \"Advanced details\" [2].\n4.  For \"Termination protection\", select \"Enable\" [2].\n5.  When you finish specifying the instance details, choose \"Launch instance\" [3].\n\n**For an existing instance using the Amazon EC2 console:**\n1.  Open the Amazon EC2 console [3].\n2.  In the navigation pane, select \"Instances\" [3].\n3.  Select the instance [3].\n4.  Choose \"Actions\", then \"Instance settings\", then \"Change termination protection\" [3].\n5.  For \"Termination protection\", select \"Enable\" [3].\n6.  Choose \"Save\" [3].\n\n**For an existing instance using the AWS CLI:**\n*   Use the `modify-instance-attribute` command with the `--disable-api-termination` flag [3].\n    Example: `aws ec2 modify-instance-attribute --instance-id i-1234567890abcdef0 --disable-api-termination` [3].\n\nBy default, termination protection is disabled for your instance [1]. You cannot enable termination protection for Spot Instances [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8488788604736328
+      },
+      "notes": [],
+      "elapsed_seconds": 8.6
+    },
+    {
+      "case_id": "monitoring-cloudwatch",
+      "query": "How do I monitor my EC2 instances with CloudWatch?",
+      "answer": "Amazon CloudWatch provides two categories of monitoring for EC2 instances: basic monitoring and detailed monitoring [2]. By default, instances are configured for basic monitoring [2, 3]. You can optionally enable detailed monitoring to help identify and act on operational issues more quickly [2]. Detailed monitoring can be enabled or turned off at launch, or when an instance is running or stopped [2].\n\nCloudWatch, along with status check information, provides detailed operational visibility into each instance [1]. You can monitor the status of your instances by viewing status checks and scheduled events [1]. Scheduled events provide information about upcoming activities like reboots or retirements, including their scheduled start and end times [1].\n\nTo display CPU utilization for a specific instance using the console:\n1.  Open the CloudWatch console [3].\n2.  In the navigation pane, choose Metrics [3].\n3.  Choose the EC2 metric namespace [3].\n4.  Choose the Per-Instance Metrics dimension [3].\n5.  Enter `CPUUtilization` in the search field, press Enter, and then choose the row for the specific instance to display its CPUUtilization metric graph [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8251020908355713
+      },
+      "notes": [],
+      "elapsed_seconds": 10.5
+    },
+    {
+      "case_id": "ondemand-vs-spot",
+      "query": "What is the difference between On-Demand Instances and Spot Instances?",
+      "answer": "Spot Instances use spare EC2 capacity and are available for less than the On-Demand price, allowing for significant cost reduction [1]. The hourly price for a Spot Instance, called a Spot price, is set by Amazon EC2 and adjusted based on supply and demand [1].\n\nWhile running, Spot Instances are exactly the same as On-Demand Instances [2]. However, Spot Instances do not guarantee that you can keep your running instances long enough to finish your workloads, nor do they guarantee immediate availability of instances [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8242306709289551
+      },
+      "notes": [],
+      "elapsed_seconds": 10.3
+    },
+    {
+      "case_id": "instance-type-categories",
+      "query": "What categories of instance types does EC2 offer?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": false,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8218801617622375
+      },
+      "notes": [],
+      "elapsed_seconds": 9.1
+    },
+    {
+      "case_id": "imdsv2-paraphrase",
+      "query": "How can I enforce token-based access to instance metadata?",
+      "answer": "To enforce token-based access to instance metadata, you can choose to require the use of Instance Metadata Service Version 2 (IMDSv2) when requesting instance metadata [1]. For IMDSv2, you must use `/latest/api/token` when retrieving the token [2].\n\nTo enforce the use of IMDSv2 on all new instances using an IAM policy, you should:\n*   Restrict access to both the `ModifyInstanceMetadataOptions` and `ModifyInstanceMetadataDefaults` API, specifically the `httpTokens` and `httpTokensEnforced` properties [3].\n*   Then, set the account default to `httpTokens = required` and `httpTokensEnforced = enabled` [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8391482830047607
+      },
+      "notes": [],
+      "elapsed_seconds": 10.8
+    },
+    {
+      "case_id": "elastic-ip-paraphrase",
+      "query": "How do I get a fixed public IP address that stays with my account?",
+      "answer": "To get a persistent public IP address that stays with your AWS account, you can allocate an Elastic IP address [1]. An Elastic IP address remains associated with your AWS account until you release it, and you can move it from one instance to another as needed [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6666666666666666,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 2,
+        "retrieved_total": 3,
+        "redundancy": 0.8314113616943359
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 8.3
+    },
+    {
+      "case_id": "launch-and-secure-multistep",
+      "query": "How do I launch an instance and restrict SSH access to only my IP address?",
+      "answer": "The 'gemini' provider was unavailable (Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429), and the local fallback also failed or was not reachable. Here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1374)\nOnly the traﬃc\nyou explicitly permit (for example, SSH traﬃc from your computer's IP address) is allowed in. • Private key – Your front door key: When you launched the instance, you speciﬁed a key pair. The public key was placed on the instance, and you kept the private key on your computer. The\nprivate key acts as your front door key—without it, you can’t get into your instance. Tutorials 1352\n[2] (p.1385)\nAmazon Elastic Compute Cloud User Guide\nWarning\nRules that enable all IP addresses to access your instance over SSH or RDP are acceptable\nif you are brieﬂy launching a test instance and will stop or terminate it after a short time. They are unsafe for production environments. You should authorize only a speciﬁc IP\naddress range to access your instances. This security group is added to the primary network interface and any secondary network\ninterfaces. You can select additional security groups for your network interfaces, but you can't\nremove the one that you select here. • Advanced network conﬁguration – You can conﬁgure the primary network interface as needed. To add a secondary network interface, choose Add network interface.\n[3] (p.2275)\nBy default,\nwhen you launch an instance, a new security group is created with a rule that allows\ninbound SSH traﬃc from anywhere. To make sure that only your IP address can connect to your instance, under Firewall\n(security groups), from the drop-down list next to the Allow SSH traﬃc from checkbox,\nchoose My IP. c. To allow traﬃc from the internet to your instance, select the following checkboxes:\n• Allow HTTPs traﬃc from the internet\n• Allow HTTP traﬃc from the internet\n8. In the Summary panel, review your instance conﬁguration and then choose Launch instance. 9. Choose View all instances to close the conﬁrmation page and return to the console. Your\ninstance will ﬁrst be in a pending state, and will then go into the running state.",
+      "provider": "extractive",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8297262191772461
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 5.5
     },
     {
       "case_id": "refuse-bigquery",
       "query": "How do I configure billing alerts in Google BigQuery?",
-      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
-      "provider": "gemini",
+      "answer": "The 'gemini' provider was unavailable (Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429), and the local fallback also failed or was not reachable. Here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.935)\nYou can also conﬁgure alarms to warn about approaching quotas. For more information,\nsee Service Quotas and Amazon CloudWatch alarms in the Service Quotas User Guide. Request a quota increase\nEven though Amazon EC2 automatically increases your On-Demand Instance quotas based on your\nusage, you can request a quota increase if necessary. For example, if you intend to launch more\nOn-Demand Instances 913\n[2] (p.1395)\nc. When you're ready to launch your instance, choose Launch instance. If the instance fails to launch or the state immediately goes to terminated instead of\nrunning, see Troubleshoot Amazon EC2 instance launch issues. 12. (Optional) You can create a billing alert for the instance. On the conﬁrmation screen, under\nNext Steps, choose Create billing alerts and follow the directions. Billing alerts can also be\nLaunch using the launch instance wizard 1373\n[3] (p.3484)\nAmazon Elastic Compute Cloud User Guide\n4. On the Manage CloudWatch alarms page, under Add or edit alarm, choose Create an\nalarm. 5. For Alarm notiﬁcation, turn the toggle on to conﬁgure Amazon Simple Notiﬁcation Service\n(Amazon SNS) notiﬁcations. Select an existing Amazon SNS topic or enter a name to create\na new topic. If you add an email address to the list of recipients or create a new topic, Amazon\nSNS sends a conﬁrmation email to each new address. Each recipient must choose the\nconﬁrmation link in the email. Only conﬁrmed addresses receive alert notiﬁcations. 6. For Alarm action, turn the toggle on to specify an action to take when the alarm is\ntriggered. Select the action. 7. For Alarm thresholds, specify the metric and criteria for the alarm.",
+      "provider": "extractive",
       "grounded": true,
       "metrics": {
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
-        "hallucination": false,
+        "hallucination": true,
         "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
+        "answer_keyword_recall": 0.0,
+        "refused_correctly": false,
         "retrieved_relevant": 0,
         "retrieved_total": 3,
         "redundancy": 0.7440863847732544
       },
-      "notes": [],
-      "elapsed_seconds": 8.4
-    },
-    {
-      "case_id": "refuse-iphone",
-      "query": "What is the release date of the iPhone 15?",
-      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
-      "provider": "gemini",
-      "grounded": true,
-      "metrics": {
-        "precision_at_k": 0.0,
-        "recall_at_k": 0.0,
-        "hallucination": false,
-        "citation_accuracy": 1.0,
-        "answer_keyword_recall": 1.0,
-        "refused_correctly": true,
-        "retrieved_relevant": 0,
-        "retrieved_total": 3,
-        "redundancy": 0.6794713735580444
-      },
-      "notes": [],
-      "elapsed_seconds": 9.1
+      "notes": [
+        "Expected refusal but got an answer.",
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 4.8
     }
   ]
 }

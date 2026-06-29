@@ -63,6 +63,23 @@ class Settings(BaseSettings):
     # overlapping text between adjacent chunks) for a more coherent context.
     context_grouping_enabled: bool = True
 
+    # ── Retrieval confidence gate ────────────────────────────
+    # Deterministic refusal before the LLM is called: if the best retrieved
+    # chunk's score is below the threshold, the corpus almost certainly does not
+    # answer the question, so we refuse instead of risking a fabricated answer.
+    # The threshold applies to the post-rerank score: cross-encoder logits
+    # (relevant >~ 0) when rerank is on, or cosine similarity when it is off.
+    retrieval_gate_enabled: bool = True
+    retrieval_gate_min_score: float = 0.0
+
+    # ── Answer validation gate ───────────────────────────────
+    # After generation, verify the answer's [n] citations point to real chunks
+    # and that enough of them are supported by the cited text. Unsupported or
+    # out-of-range citations append a brief disclaimer and mark the answer as
+    # not fully grounded (the answer text is otherwise preserved).
+    answer_validation_enabled: bool = True
+    answer_validation_min_support: float = 0.5
+
     # ── LLM Router ───────────────────────────────────────────
     # "auto" | "openai" | "gemini" | "ollama" | "extractive"
     llm_provider: str = "auto"
