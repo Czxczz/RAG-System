@@ -29,7 +29,7 @@ Client (HTTP)  ─►  FastAPI Gateway  ─►  RAG Orchestrator (core brain)
                         ┌─────────────────┴──────────────────┐
                         ▼                                     ▼
                  Ingestion Pipeline                     Query Engine
-              (extract→clean→chunk→embed)    (rewrite→search→rerank→dedup)
+              (extract→clean→chunk→embed)    (rewrite→search→rerank→dedup→validate)
                         │                                     │
                         ▼                                     ▼
                  Embedding Service  ◄────────────────►  Vector DB (FAISS)
@@ -58,18 +58,19 @@ app/
     ├── ingestion.py        # load → extract → clean → chunk
     ├── embeddings.py       # local (sentence-transformers) | OpenAI
     ├── vector_store.py     # FAISS index + persisted metadata
-    ├── query_rewriter.py   # multi-query expansion (LLM + heuristic)
-    ├── query_engine.py     # retrieval pipeline orchestration
+    ├── query_rewriter.py   # multi-query expansion (LLM + heuristic + taxonomy)
+    ├── query_engine.py     # retrieval pipeline + multi-variant rerank
     ├── reranker.py         # cross-encoder second-stage scoring
     ├── diversity.py        # MMR + hard dedup + text Jaccard dedupe
     ├── context_grouping.py # group chunks by source, trim overlap
+    ├── answer_validation.py # post-generation citation validation gate
     ├── llm_router.py       # OpenAI / Gemini / Ollama / extractive fallback
     ├── registry.py         # document catalogue
     └── orchestrator.py     # the core brain
 
 eval/
-├── dataset.ec2.json     # Labeled EC2 user guide eval set (10 cases)
-├── report.ec2.json      # Latest eval report (example output)
+├── dataset.ec2.json     # Labeled EC2 user guide eval set (28 cases)
+├── report.ec2.json      # Latest Gemini eval report (28 cases)
 └── report.before.json   # Baseline before redundancy tuning
 
 scripts/
@@ -153,7 +154,8 @@ Response:
   "provider": "gemini",
   "citations": [
     {"marker": 1, "filename": "notes.pdf", "score": 0.71, "snippet": "..."}
-  ]
+  ],
+  "validation_notes": []
 }
 ```
 
@@ -161,10 +163,13 @@ Response:
 
 ## Grounding guarantees
 
-- If no chunk clears the similarity threshold (`MIN_SCORE`), the API returns
-  **"I couldn't find anything relevant…"** and never calls the LLM.
+- If no chunk clears the similarity threshold (`MIN_SCORE`), or the **retrieval
+  confidence gate** rejects low-scoring hits, the API returns **"I couldn't find
+  anything relevant…"** and never calls the LLM.
 - The system prompt forbids outside knowledge and requires inline `[n]`
   citations mapping to retrieved passages.
+- The **answer validation gate** checks that citations exist and are supported;
+  failing answers include a disclaimer and `grounded: false`.
 - Cloud LLM failures cascade: **OpenAI / Gemini → Ollama → extractive** fallback.
 
 ---
@@ -193,6 +198,10 @@ See [`.env.example`](.env.example). Key settings:
 | `TEXT_DEDUPE_ENABLED` | `true` | Word-overlap text filter after MMR |
 | `TEXT_DEDUPE_JACCARD` | `0.85` | Jaccard threshold for near-identical text |
 | `CONTEXT_GROUPING_ENABLED` | `true` | Group context by source in reading order |
+| `RETRIEVAL_GATE_ENABLED` | `true` | Refuse when best chunk score is below threshold |
+| `RETRIEVAL_GATE_MIN_SCORE` | `0.0` | Min post-rerank score (cross-encoder logits) |
+| `ANSWER_VALIDATION_ENABLED` | `true` | Validate citations after generation |
+| `ANSWER_VALIDATION_MIN_SUPPORT` | `0.5` | Min fraction of citations that must be supported |
 
 ### Retrieval pipeline
 
@@ -201,15 +210,16 @@ pipeline on top of vector search:
 
 ```
 query
-  → rewrite into variants ........ multi-query (LLM paraphrases / heuristic)
+  → rewrite into variants ........ multi-query (LLM / heuristic / taxonomy)
   → embed + FAISS top RETRIEVE_K .. per variant, fused by max-cosine
   → filter MIN_SCORE
-  → cross-encoder rerank .......... joint (query, chunk) relevance
+  → cross-encoder rerank .......... max score per chunk across all variants
   → MMR diversity rerank .......... λ·relevance − (1−λ)·redundancy
   → hard cosine dedup ............. drop chunks ≥ MMR_DEDUP_THRESHOLD to a kept chunk
   → text dedupe ................... drop exact / high Jaccard overlap passages
   → context grouping .............. group by source, reading order, trim overlap
   → LLM (grounded answer + [n] citations)
+  → answer validation ............. verify citations; disclaimer if unsupported
 ```
 
 - **Query rewriting** lifts recall by retrieving for several phrasings, then
@@ -238,20 +248,34 @@ python scripts/compact_index.py
 - [x] Diversity-aware reranking (MMR + hard dedup + text dedupe)
 - [x] Context grouping with overlap trimming
 - [x] Hybrid LLM routing (OpenAI / Gemini / Ollama / extractive)
-- [x] Offline eval suite with redundancy metric
+- [x] Offline eval suite with redundancy metric (28-case EC2 dataset)
+- [x] Retrieval confidence gate + answer validation gate
+- [x] Taxonomy query heuristic + multi-variant rerank
+- [ ] LangChain / LangGraph integration (parallel RAG path)
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
 - [ ] Streaming responses
 - [ ] Per-document / per-collection scoping
-- [ ] Answer validation gate before returning to client
 
 ---
 
 ## Evaluation
 
 Offline scoring runs the **same in-process pipeline** as `/chat` (no HTTP server
-required). The default dataset is the EC2 user guide (`eval/dataset.ec2.json`, 10
-cases: 8 answerable + 2 refusal).
+required). The default dataset is the EC2 user guide (`eval/dataset.ec2.json`,
+**28 cases**: 23 answerable + 5 refusal).
+
+**Latest report** (`eval/report.ec2.json`, Gemini, `top_k=3`):
+
+| Metric | Score |
+| --- | --- |
+| precision@k | 0.82 |
+| recall@k | 0.81 |
+| redundancy | 0.78 |
+| citation_accuracy | 1.00 |
+| answer_keyword_recall | 0.96 |
+| refusal_accuracy | 1.00 |
+| hallucination_rate | 0.04 |
 
 Metrics:
 
