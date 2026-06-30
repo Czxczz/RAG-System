@@ -101,7 +101,14 @@ def delete_document(
 def chat(
     request: ChatRequest, orch: RAGOrchestrator = Depends(get_orchestrator)
 ) -> ChatResponse:
-    result = orch.answer(query=request.query, mode=request.mode, top_k=request.top_k)
+    if request.engine == "langchain":
+        from app.dependencies import get_langchain_rag
+
+        result = get_langchain_rag().answer(
+            query=request.query, mode=request.mode, top_k=request.top_k
+        )
+    else:
+        result = orch.answer(query=request.query, mode=request.mode, top_k=request.top_k)
     citations = [
         Citation(
             marker=i,

@@ -33,3 +33,15 @@ def get_orchestrator() -> RAGOrchestrator:
         registry=registry,
         reranker=reranker,
     )
+
+
+@lru_cache
+def get_langchain_rag():
+    """LangChain (LCEL) RAG path sharing the orchestrator's components.
+
+    Imported lazily so the optional ``langchain-core`` dependency is only
+    required when the LangChain engine is actually used.
+    """
+    from app.chains.langchain_rag import build_langchain_rag
+
+    return build_langchain_rag(get_orchestrator())

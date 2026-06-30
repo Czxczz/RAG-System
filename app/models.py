@@ -37,6 +37,13 @@ class ChatRequest(BaseModel):
     top_k: Optional[int] = Field(
         default=3, ge=1, le=20, description="Override number of chunks to retrieve."
     )
+    engine: Literal["custom", "langchain"] = Field(
+        default="custom",
+        description=(
+            "Pipeline implementation: 'custom' = built-in orchestrator (default), "
+            "'langchain' = LCEL wrapper over the same components."
+        ),
+    )
 
 
 class Citation(BaseModel):
