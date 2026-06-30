@@ -24,25 +24,29 @@ answers with citations**, powered by a **local or cloud LLM** of your choice.
 ## Architecture
 
 ```
-Client (HTTP)  ─►  FastAPI Gateway  ─►  RAG Orchestrator (core brain)
+Client (HTTP)  ─►  FastAPI Gateway  ─►  engine: custom | langchain
                                           │
                         ┌─────────────────┴──────────────────┐
                         ▼                                     ▼
-                 Ingestion Pipeline                     Query Engine
-              (extract→clean→chunk→embed)    (rewrite→search→rerank→dedup→validate)
+              RAG Orchestrator (default)          LangChainRAG (LCEL)
+              app/core/orchestrator.py            app/chains/langchain_rag.py
                         │                                     │
+                        └──────────────┬──────────────────────┘
+                                       ▼
+                              Shared Query Engine + LLM Router
+                        (rewrite → FAISS → rerank → MMR → dedup)
+                                       │
+                        ┌──────────────┴──────────────────────┐
                         ▼                                     ▼
-                 Embedding Service  ◄────────────────►  Vector DB (FAISS)
-                                                              │
-                                                              ▼
-                                                       LLM Router
-                                              (OpenAI / Gemini / Ollama / extractive)
-                                                              │
-                                                              ▼
-                                                Grounded answer + citations
+                 Ingestion Pipeline                     Vector DB (FAISS)
+              (extract→clean→chunk→embed)
+                                       │
+                                       ▼
+                         Grounded answer + citations + validation
 ```
 
-Every component is modular and independently replaceable.
+Both engines share the same FAISS index, `QueryEngine`, and `LLMRouter`.
+The custom path is the default; LangChain is an opt-in parallel composition layer.
 
 ### Project layout
 
@@ -53,6 +57,8 @@ app/
 ├── models.py            # Pydantic request/response schemas
 ├── dependencies.py      # Composition root (singletons)
 ├── api/routes.py        # HTTP endpoints
+├── chains/              # LangChain (LCEL) wrapper — optional parallel RAG path
+│   └── langchain_rag.py # QueryEngineRetriever + LangChainRAG
 ├── eval/                # Offline eval schemas, metrics, runner
 └── core/
     ├── ingestion.py        # load → extract → clean → chunk
@@ -75,6 +81,7 @@ eval/
 
 scripts/
 ├── run_eval.py          # Offline eval harness (in-process, not HTTP)
+├── compare_engines.py   # Side-by-side custom vs LangChain parity check
 ├── diagnose_retrieval.py # Evidence-based retrieval diagnosis
 ├── tune_mmr.py          # Sweep MMR lambda / dedup threshold
 ├── compact_index.py     # Remove exact-duplicate chunks from FAISS index
@@ -143,7 +150,17 @@ curl -F "file=@notes.pdf" http://localhost:8000/documents/upload
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"query": "What are the key findings?", "mode": "auto"}'
+
+# Opt-in LangChain (LCEL) path — same retrieval, different composition layer
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the key findings?", "mode": "gemini", "engine": "langchain"}'
 ```
+
+| `engine` | Description |
+| --- | --- |
+| `custom` (default) | Built-in `RAGOrchestrator` — used by eval and default `/chat` |
+| `langchain` | LCEL wrapper in `app/chains/` — same `QueryEngine` + `LLMRouter` |
 
 Response:
 
@@ -241,6 +258,33 @@ python scripts/compact_index.py
 
 ---
 
+## LangChain integration (optional)
+
+The project includes a **parallel LangChain (LCEL) path** that wraps the tuned
+pipeline without replacing it. This is useful for learning LangChain, adding
+streaming/memory later, and migrating toward LangGraph — while keeping one source
+of truth for retrieval quality in `app/core/query_engine.py`.
+
+| Layer | Location | Role |
+| --- | --- | --- |
+| **Core (tuned)** | `app/core/` | Retrieval, MMR, gates, LLM router — unchanged |
+| **LangChain (composition)** | `app/chains/` | `BaseRetriever`, `ChatPromptTemplate`, LCEL `Runnable` |
+
+**What LangChain wraps:** prompt assembly and the generation step as a composable
+chain. **What it reuses:** `QueryEngine`, `build_grouped_context`, `LLMRouter`,
+and `validate_answer`.
+
+Compare both engines on the same query:
+
+```bash
+python scripts/compare_engines.py --mode extractive --limit 5
+python scripts/compare_engines.py --case-id imdsv2-require --mode gemini
+```
+
+Eval (`scripts/run_eval.py`) still uses the **custom** orchestrator by default.
+
+---
+
 ## Roadmap
 
 - [x] Cross-encoder reranking
@@ -251,7 +295,8 @@ python scripts/compact_index.py
 - [x] Offline eval suite with redundancy metric (28-case EC2 dataset)
 - [x] Retrieval confidence gate + answer validation gate
 - [x] Taxonomy query heuristic + multi-variant rerank
-- [ ] LangChain / LangGraph integration (parallel RAG path)
+- [x] LangChain LCEL wrapper (`engine: langchain` on `/chat`)
+- [ ] LangGraph (retrieve → gate → generate → validate as graph nodes)
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
 - [ ] Streaming responses
