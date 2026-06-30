@@ -44,6 +44,26 @@ def _keyword_variant(query: str) -> str:
     return " ".join(kept)
 
 
+# Broad taxonomy questions ("categories of instance types") often retrieve
+# overview chunks that point to an external guide instead of the list section.
+# A deterministic variant using the family names lifts the right passages.
+_TAXONOMY_QUERY = re.compile(
+    r"\b(?:categor(?:y|ies)|families|types?|kinds?)\b.*\b(?:instance|ec2)\b"
+    r"|\b(?:instance|ec2)\b.*\b(?:categor(?:y|ies)|families|types?|kinds?)\b",
+    re.IGNORECASE,
+)
+_TAXONOMY_VARIANT = (
+    "EC2 instance type families general purpose compute optimized "
+    "memory optimized storage optimized accelerated computing"
+)
+
+
+def _taxonomy_variant(query: str) -> str | None:
+    if _TAXONOMY_QUERY.search(query):
+        return _TAXONOMY_VARIANT
+    return None
+
+
 def _dedupe_preserve_order(items: list[str]) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
@@ -78,7 +98,14 @@ class QueryRewriter:
         if not variants:
             variants = self._heuristic_variants(query)
 
-        return _dedupe_preserve_order([query, *variants])[: n + 1]
+        taxonomy = _taxonomy_variant(query)
+        if taxonomy:
+            variants.insert(0, taxonomy)
+
+        # Allow one extra slot when a taxonomy variant is injected so it is not
+        # truncated by the usual variant budget.
+        limit = n + 1 + (1 if taxonomy else 0)
+        return _dedupe_preserve_order([query, *variants])[:limit]
 
     # ── Strategies ───────────────────────────────────────────
     def _llm_variants(self, query: str, n: int) -> list[str]:

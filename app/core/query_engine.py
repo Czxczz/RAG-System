@@ -52,7 +52,7 @@ class QueryEngine:
             return []
 
         if self.settings.rerank_enabled and self.reranker:
-            hits = self.reranker.rerank(query, hits)
+            hits = self._rerank_over_variants(variants, hits)
 
         if self.settings.mmr_enabled and len(hits) > 1:
             vectors = self.store.vectors_for([h.chunk.id for h in hits])
@@ -92,3 +92,24 @@ class QueryEngine:
         hits = [h for h in fused.values() if h.score >= min_score]
         hits.sort(key=lambda h: h.score, reverse=True)
         return hits
+
+    def _rerank_over_variants(
+        self, variants: list[str], hits: list[SearchHit]
+    ) -> list[SearchHit]:
+        """Rerank with each query variant and keep the best score per chunk.
+
+        Multi-query fusion can surface chunks that match a paraphrase but score
+        poorly against the original wording. Taking the max cross-encoder score
+        across variants aligns reranking with the fused retrieval pool.
+        """
+        assert self.reranker is not None
+        if len(variants) <= 1:
+            return self.reranker.rerank(variants[0], hits)
+
+        best: dict[str, SearchHit] = {}
+        for variant in variants:
+            for hit in self.reranker.rerank(variant, hits):
+                existing = best.get(hit.chunk.id)
+                if existing is None or hit.score > existing.score:
+                    best[hit.chunk.id] = hit
+        return sorted(best.values(), key=lambda h: h.score, reverse=True)

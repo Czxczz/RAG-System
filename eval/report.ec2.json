@@ -2,14 +2,14 @@
   "dataset": "ec2-user-guide",
   "mode": "gemini",
   "top_k": 3,
-  "num_cases": 24,
-  "precision_at_k": 0.9305555555555557,
-  "recall_at_k": 0.9083333333333333,
-  "hallucination_rate": 0.125,
+  "num_cases": 28,
+  "precision_at_k": 0.8214285714285715,
+  "recall_at_k": 0.8142857142857143,
+  "hallucination_rate": 0.03571428571428571,
   "citation_accuracy": 1.0,
-  "answer_keyword_recall": 0.875,
-  "refusal_accuracy": 0.0,
-  "redundancy": 0.8193031549453735,
+  "answer_keyword_recall": 0.9642857142857143,
+  "refusal_accuracy": 1.0,
+  "redundancy": 0.7840467137949807,
   "cases": [
     {
       "case_id": "imdsv2-require",
@@ -402,22 +402,22 @@
     {
       "case_id": "instance-type-categories",
       "query": "What categories of instance types does EC2 offer?",
-      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "answer": "Amazon EC2 offers several categories of instance types, including General purpose, Compute optimized, Memory optimized, Accelerated computing, High-performance computing, and Storage optimized [2, 3]. Each instance type provides a different balance of compute, memory, network, and storage resources [1].",
       "provider": "gemini",
       "grounded": true,
       "metrics": {
-        "precision_at_k": 1.0,
+        "precision_at_k": 0.6666666666666666,
         "recall_at_k": 1.0,
         "hallucination": false,
         "citation_accuracy": 1.0,
-        "answer_keyword_recall": 0.0,
-        "refused_correctly": false,
-        "retrieved_relevant": 3,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 2,
         "retrieved_total": 3,
-        "redundancy": 0.8218801617622375
+        "redundancy": 0.7769783735275269
       },
       "notes": [],
-      "elapsed_seconds": 9.1
+      "elapsed_seconds": 7.2
     },
     {
       "case_id": "imdsv2-paraphrase",
@@ -464,13 +464,13 @@
     {
       "case_id": "launch-and-secure-multistep",
       "query": "How do I launch an instance and restrict SSH access to only my IP address?",
-      "answer": "The 'gemini' provider was unavailable (Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429), and the local fallback also failed or was not reachable. Here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.1374)\nOnly the traﬃc\nyou explicitly permit (for example, SSH traﬃc from your computer's IP address) is allowed in. • Private key – Your front door key: When you launched the instance, you speciﬁed a key pair. The public key was placed on the instance, and you kept the private key on your computer. The\nprivate key acts as your front door key—without it, you can’t get into your instance. Tutorials 1352\n[2] (p.1385)\nAmazon Elastic Compute Cloud User Guide\nWarning\nRules that enable all IP addresses to access your instance over SSH or RDP are acceptable\nif you are brieﬂy launching a test instance and will stop or terminate it after a short time. They are unsafe for production environments. You should authorize only a speciﬁc IP\naddress range to access your instances. This security group is added to the primary network interface and any secondary network\ninterfaces. You can select additional security groups for your network interfaces, but you can't\nremove the one that you select here. • Advanced network conﬁguration – You can conﬁgure the primary network interface as needed. To add a secondary network interface, choose Add network interface.\n[3] (p.2275)\nBy default,\nwhen you launch an instance, a new security group is created with a rule that allows\ninbound SSH traﬃc from anywhere. To make sure that only your IP address can connect to your instance, under Firewall\n(security groups), from the drop-down list next to the Allow SSH traﬃc from checkbox,\nchoose My IP. c. To allow traﬃc from the internet to your instance, select the following checkboxes:\n• Allow HTTPs traﬃc from the internet\n• Allow HTTP traﬃc from the internet\n8. In the Summary panel, review your instance conﬁguration and then choose Launch instance. 9. Choose View all instances to close the conﬁrmation page and return to the console. Your\ninstance will ﬁrst be in a pending state, and will then go into the running state.",
-      "provider": "extractive",
+      "answer": "When launching an instance, to ensure that only your IP address can connect to it via SSH, you should go to the Firewall (security groups) section. From the drop-down list next to the \"Allow SSH traffic from\" checkbox, choose \"My IP\" [3]. By default, a new security group is created with a rule that allows inbound SSH traffic from anywhere, so this step is necessary to restrict access [3]. After configuring, review your instance configuration in the Summary panel and then choose \"Launch instance\" [3].",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
         "recall_at_k": 1.0,
-        "hallucination": true,
+        "hallucination": false,
         "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
@@ -478,33 +478,108 @@
         "retrieved_total": 3,
         "redundancy": 0.8297262191772461
       },
-      "notes": [
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 5.5
+      "notes": [],
+      "elapsed_seconds": 9.1
     },
     {
       "case_id": "refuse-bigquery",
       "query": "How do I configure billing alerts in Google BigQuery?",
-      "answer": "The 'gemini' provider was unavailable (Client error '429 Too Many Requests' for url 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429), and the local fallback also failed or was not reachable. Here are the most relevant passages from your documents (cited below):\n\n### Source: ec2-ug.pdf\n[1] (p.935)\nYou can also conﬁgure alarms to warn about approaching quotas. For more information,\nsee Service Quotas and Amazon CloudWatch alarms in the Service Quotas User Guide. Request a quota increase\nEven though Amazon EC2 automatically increases your On-Demand Instance quotas based on your\nusage, you can request a quota increase if necessary. For example, if you intend to launch more\nOn-Demand Instances 913\n[2] (p.1395)\nc. When you're ready to launch your instance, choose Launch instance. If the instance fails to launch or the state immediately goes to terminated instead of\nrunning, see Troubleshoot Amazon EC2 instance launch issues. 12. (Optional) You can create a billing alert for the instance. On the conﬁrmation screen, under\nNext Steps, choose Create billing alerts and follow the directions. Billing alerts can also be\nLaunch using the launch instance wizard 1373\n[3] (p.3484)\nAmazon Elastic Compute Cloud User Guide\n4. On the Manage CloudWatch alarms page, under Add or edit alarm, choose Create an\nalarm. 5. For Alarm notiﬁcation, turn the toggle on to conﬁgure Amazon Simple Notiﬁcation Service\n(Amazon SNS) notiﬁcations. Select an existing Amazon SNS topic or enter a name to create\na new topic. If you add an email address to the list of recipients or create a new topic, Amazon\nSNS sends a conﬁrmation email to each new address. Each recipient must choose the\nconﬁrmation link in the email. Only conﬁrmed addresses receive alert notiﬁcations. 6. For Alarm action, turn the toggle on to specify an action to take when the alarm is\ntriggered. Select the action. 7. For Alarm thresholds, specify the metric and criteria for the alarm.",
-      "provider": "extractive",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
       "grounded": true,
       "metrics": {
         "precision_at_k": 0.0,
         "recall_at_k": 0.0,
-        "hallucination": true,
+        "hallucination": false,
         "citation_accuracy": 1.0,
-        "answer_keyword_recall": 0.0,
-        "refused_correctly": false,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
         "retrieved_relevant": 0,
         "retrieved_total": 3,
         "redundancy": 0.7440863847732544
       },
-      "notes": [
-        "Expected refusal but got an answer.",
-        "Hallucination heuristic triggered."
-      ],
-      "elapsed_seconds": 4.8
+      "notes": [],
+      "elapsed_seconds": 8.0
+    },
+    {
+      "case_id": "refuse-iphone",
+      "query": "What is the release date of the iPhone 15?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "none",
+      "grounded": false,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 0,
+        "redundancy": 0.0
+      },
+      "notes": [],
+      "elapsed_seconds": 6.0
+    },
+    {
+      "case_id": "refuse-s3-lifecycle",
+      "query": "How do I configure an S3 bucket lifecycle policy?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "redundancy": 0.7725339531898499
+      },
+      "notes": [],
+      "elapsed_seconds": 9.7
+    },
+    {
+      "case_id": "refuse-rds-backup",
+      "query": "How do I schedule automated backups for an Amazon RDS database?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "redundancy": 0.8318777680397034
+      },
+      "notes": [],
+      "elapsed_seconds": 9.3
+    },
+    {
+      "case_id": "refuse-lambda-memory",
+      "query": "How do I set the memory size for an AWS Lambda function?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "redundancy": 0.7305223345756531
+      },
+      "notes": [],
+      "elapsed_seconds": 8.5
     }
   ]
 }

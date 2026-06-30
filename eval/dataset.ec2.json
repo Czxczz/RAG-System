@@ -156,8 +156,8 @@
     {
       "id": "instance-type-categories",
       "query": "What categories of instance types does EC2 offer?",
-      "relevant_keywords": ["instance type", "compute", "memory"],
-      "expected_answer_keywords": ["instance type"],
+      "relevant_keywords": ["General purpose", "Compute optimized", "Memory optimized"],
+      "expected_answer_keywords": ["General purpose", "Compute optimized"],
       "should_refuse": false,
       "top_k": 3
     },

@@ -51,6 +51,14 @@ def test_rewriter_heuristic_produces_unique_variants():
     assert any("reset" in v and "password" in v and "how" not in v.lower() for v in variants)
 
 
+def test_rewriter_adds_taxonomy_variant_for_instance_type_categories():
+    settings = Settings(query_rewrite_use_llm=False, query_rewrite_num_variants=3)
+    rw = QueryRewriter(settings, _NoLLM())
+    variants = rw.rewrite("What categories of instance types does EC2 offer?")
+    assert variants[0] == "What categories of instance types does EC2 offer?"
+    assert any("general purpose" in v.lower() and "compute optimized" in v.lower() for v in variants)
+
+
 # ── MMR diversity ────────────────────────────────────────────
 def test_mmr_order_prefers_diverse_second_pick():
     # Items 0 and 1 are near-identical; item 2 is distinct but less relevant.
