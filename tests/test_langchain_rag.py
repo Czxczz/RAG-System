@@ -50,10 +50,16 @@ class _FakeLLM:
 
     def generate_stream(self, system: str, user: str, mode: str):
         self.calls.append((system, user, mode))
-        # Stream word-by-word to exercise multi-delta accumulation.
         words = self._answer.split(" ")
         for i, word in enumerate(words):
             yield (word if i == 0 else " " + word), self._provider
+
+    def generate_with_history(self, system: str, user: str, mode: str, history):
+        self.calls.append((system, user, mode))
+        return self._answer, self._provider
+
+    def generate_stream_with_history(self, system: str, user: str, mode: str, history):
+        yield from self.generate_stream(system, user, mode)
 
 
 def _rag(hits, answer, settings=None, provider="gemini") -> tuple[LangChainRAG, _FakeLLM]:
@@ -176,3 +182,23 @@ def test_stream_appends_disclaimer_when_validation_fails():
     assert "may not be fully supported" in full
     assert events[-1]["grounded"] is False
     assert events[-1]["validation_notes"]
+    assert events[-1]["conversation_id"]
+
+
+def test_answer_returns_conversation_id_and_uses_history():
+    settings = Settings(chat_memory_contextualize_use_llm=False)
+    hits = [_hit("An Elastic IP address is static and public.", 0)]
+    rag, llm = _rag(hits, answer="An Elastic IP is static [1].", settings=settings)
+    first = rag.answer("What is an Elastic IP?", mode="gemini")
+    assert first.conversation_id
+
+    engine = rag.retriever.query_engine
+    follow = rag.answer(
+        "How do I release it?",
+        mode="gemini",
+        conversation_id=first.conversation_id,
+    )
+    assert follow.conversation_id == first.conversation_id
+    assert engine.last_call is not None
+    assert "release it" in engine.last_call[0]
+    assert len(llm.calls) == 2

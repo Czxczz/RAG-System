@@ -36,6 +36,10 @@ from langchain_core.runnables import Runnable, RunnableLambda
 from app.config import Settings
 from app.core.answer_validation import DISCLAIMER, validate_answer
 from app.core.context_grouping import build_flat_context, build_grouped_context
+from app.core.conversation_memory import (
+    ConversationStore,
+    contextualize_query,
+)
 from app.core.llm_router import LLMRouter
 from app.core.orchestrator import NOT_FOUND_MESSAGE, SYSTEM_PROMPT
 from app.core.vector_store import SearchHit
@@ -56,6 +60,7 @@ class LCAnswer:
     hits: list[SearchHit]
     validated: bool = True
     validation_notes: list[str] = field(default_factory=list)
+    conversation_id: str = ""
 
 
 def hit_to_document(hit: SearchHit, marker: int) -> Document:
@@ -134,10 +139,12 @@ class LangChainRAG:
         settings: Settings,
         query_engine: QueryEngine,
         llm: LLMRouter,
+        conversation_store: ConversationStore | None = None,
     ) -> None:
         self.settings = settings
         self.query_engine = query_engine
         self.llm = llm
+        self.conversation_store = conversation_store or ConversationStore()
         self.retriever = QueryEngineRetriever(
             query_engine=query_engine,
             top_k=settings.top_k,
@@ -170,28 +177,65 @@ class LangChainRAG:
         return RunnableLambda(call_router)
 
     # ── Public API ───────────────────────────────────────────
-    def answer(self, query: str, mode: str = "auto", top_k: int | None = None) -> LCAnswer:
+    def answer(
+        self,
+        query: str,
+        mode: str = "auto",
+        top_k: int | None = None,
+        conversation_id: str | None = None,
+    ) -> LCAnswer:
+        conv_id, _ = self.conversation_store.get_or_create(conversation_id)
+        history = (
+            self.conversation_store.recent_turns(
+                conv_id, self.settings.chat_memory_max_turns
+            )
+            if self.settings.chat_memory_enabled
+            else []
+        )
+
         if top_k is not None and top_k != self.retriever.top_k:
             self.retriever.top_k = top_k
 
-        hits = self.retriever.retrieve_hits(query)
+        retrieval_query = contextualize_query(query, history, self.settings, self.llm)
+        hits = self.retriever.retrieve_hits(retrieval_query)
         if not hits or self._retrieval_below_gate(hits):
-            return LCAnswer(
-                answer=NOT_FOUND_MESSAGE, grounded=False, provider="none", hits=[]
+            result = LCAnswer(
+                answer=NOT_FOUND_MESSAGE,
+                grounded=False,
+                provider="none",
+                hits=[],
+                conversation_id=conv_id,
             )
+            self._remember_exchange(conv_id, query, result.answer)
+            return result
 
         if self.settings.context_grouping_enabled:
             context, ordered_hits = build_grouped_context(hits)
         else:
             context, ordered_hits = build_flat_context(hits)
 
-        generated = self.generation_chain.invoke(
-            {"context": context, "query": query, "mode": mode}
-        )
-        return self._validate(generated["answer"], generated["provider"], ordered_hits)
+        user_prompt = self._build_user_prompt(query, context)
+        if history and self.settings.chat_memory_enabled:
+            answer, provider = self.llm.generate_with_history(
+                SYSTEM_PROMPT, user_prompt, mode=mode, history=history
+            )
+        else:
+            generated = self.generation_chain.invoke(
+                {"context": context, "query": query, "mode": mode}
+            )
+            answer, provider = generated["answer"], generated["provider"]
+
+        result = self._validate(answer, provider, ordered_hits)
+        result.conversation_id = conv_id
+        self._remember_exchange(conv_id, query, result.answer)
+        return result
 
     def stream(
-        self, query: str, mode: str = "auto", top_k: int | None = None
+        self,
+        query: str,
+        mode: str = "auto",
+        top_k: int | None = None,
+        conversation_id: str | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Stream the RAG answer as Server-Sent-Event-style dict events.
 
@@ -207,10 +251,20 @@ class LangChainRAG:
         needs the full answer; if it fails, the disclaimer is streamed as a final
         token and ``grounded`` is reported ``False`` in the done event.
         """
+        conv_id, _ = self.conversation_store.get_or_create(conversation_id)
+        history = (
+            self.conversation_store.recent_turns(
+                conv_id, self.settings.chat_memory_max_turns
+            )
+            if self.settings.chat_memory_enabled
+            else []
+        )
+
         if top_k is not None and top_k != self.retriever.top_k:
             self.retriever.top_k = top_k
 
-        hits = self.retriever.retrieve_hits(query)
+        retrieval_query = contextualize_query(query, history, self.settings, self.llm)
+        hits = self.retriever.retrieve_hits(retrieval_query)
         if not hits or self._retrieval_below_gate(hits):
             yield {"type": "token", "text": NOT_FOUND_MESSAGE}
             yield {
@@ -218,7 +272,9 @@ class LangChainRAG:
                 "grounded": False,
                 "provider": "none",
                 "validation_notes": [],
+                "conversation_id": conv_id,
             }
+            self._remember_exchange(conv_id, query, NOT_FOUND_MESSAGE)
             return
 
         if self.settings.context_grouping_enabled:
@@ -233,13 +289,17 @@ class LangChainRAG:
             ],
         }
 
-        messages = self.prompt.format_messages(context=context, query=query)
-        system_text = messages[0].content
-        user_text = messages[1].content
+        user_prompt = self._build_user_prompt(query, context)
 
         parts: list[str] = []
         provider = "none"
-        for delta, prov in self.llm.generate_stream(system_text, user_text, mode):
+        if history and self.settings.chat_memory_enabled:
+            stream_fn = self.llm.generate_stream_with_history(
+                SYSTEM_PROMPT, user_prompt, mode, history
+            )
+        else:
+            stream_fn = self.llm.generate_stream(SYSTEM_PROMPT, user_prompt, mode)
+        for delta, prov in stream_fn:
             provider = prov
             parts.append(delta)
             yield {"type": "token", "text": delta}
@@ -247,6 +307,7 @@ class LangChainRAG:
 
         grounded = True
         notes: list[str] = []
+        stored_answer = answer
         if self.settings.answer_validation_enabled and answer != NOT_FOUND_MESSAGE:
             result = validate_answer(
                 answer,
@@ -257,13 +318,33 @@ class LangChainRAG:
             notes = result.notes
             if not result.passed:
                 yield {"type": "token", "text": DISCLAIMER}
+                stored_answer = answer + DISCLAIMER
 
         yield {
             "type": "done",
             "grounded": grounded,
             "provider": provider,
             "validation_notes": notes,
+            "conversation_id": conv_id,
         }
+        self._remember_exchange(conv_id, query, stored_answer)
+
+    @staticmethod
+    def _build_user_prompt(query: str, context: str) -> str:
+        return (
+            f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
+            "Answer with inline [n] citations."
+        )
+
+    def _remember_exchange(self, conversation_id: str, query: str, answer: str) -> None:
+        if not self.settings.chat_memory_enabled:
+            return
+        self.conversation_store.append_exchange(
+            conversation_id,
+            query,
+            answer,
+            max_turns=self.settings.chat_memory_max_turns,
+        )
 
     def as_runnable(self) -> Runnable:
         """Expose the end-to-end flow as a single LCEL Runnable.
@@ -317,4 +398,5 @@ def build_langchain_rag(orchestrator: Any) -> LangChainRAG:
         settings=orchestrator.settings,
         query_engine=orchestrator.query_engine,
         llm=orchestrator.llm,
+        conversation_store=orchestrator.conversation_store,
     )

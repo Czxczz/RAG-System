@@ -20,6 +20,8 @@ import httpx
 
 from app.config import Settings
 
+ChatMessage = dict[str, str]  # {"role": "system"|"user"|"assistant", "content": str}
+
 
 class LLMRouter:
     def __init__(self, settings: Settings) -> None:
@@ -64,8 +66,21 @@ class LLMRouter:
 
     # ── Generation ───────────────────────────────────────────
     def generate(self, system_prompt: str, user_prompt: str, mode: str) -> tuple[str, str]:
+        messages = self._build_messages(system_prompt, user_prompt)
+        return self.generate_messages(messages, mode)
+
+    def generate_with_history(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        mode: str,
+        history: list,
+    ) -> tuple[str, str]:
+        messages = self._build_messages(system_prompt, user_prompt, history=history)
+        return self.generate_messages(messages, mode)
+
+    def generate_messages(self, messages: list[ChatMessage], mode: str) -> tuple[str, str]:
         primary = self._resolve_provider(mode)
-        # If cloud fails (429, 503, …), try local Ollama before extractive dump.
         chain = [primary]
         if primary in {"openai", "gemini"} and self._ollama_available():
             chain.append("ollama")
@@ -74,15 +89,16 @@ class LLMRouter:
         for provider in chain:
             try:
                 if provider == "openai":
-                    return self._generate_openai(system_prompt, user_prompt), "openai"
+                    return self._generate_openai_messages(messages), "openai"
                 if provider == "gemini":
-                    return self._generate_gemini(system_prompt, user_prompt), "gemini"
+                    return self._generate_gemini_messages(messages), "gemini"
                 if provider == "ollama":
-                    return self._generate_ollama(system_prompt, user_prompt), "ollama"
+                    return self._generate_ollama_messages(messages), "ollama"
             except Exception as exc:
                 last_exc = exc
                 continue
 
+        user_prompt = messages[-1]["content"] if messages else ""
         if primary == "extractive":
             return self._generate_extractive(user_prompt), "extractive"
 
@@ -92,9 +108,39 @@ class LLMRouter:
             "extractive",
         )
 
+    @staticmethod
+    def _build_messages(
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        history: list | None = None,
+    ) -> list[ChatMessage]:
+        messages: list[ChatMessage] = [{"role": "system", "content": system_prompt}]
+        if history:
+            for turn in history:
+                messages.append({"role": turn.role, "content": turn.content})
+        messages.append({"role": "user", "content": user_prompt})
+        return messages
+
     # ── Streaming generation ─────────────────────────────────
     def generate_stream(
         self, system_prompt: str, user_prompt: str, mode: str
+    ) -> Iterator[tuple[str, str]]:
+        messages = self._build_messages(system_prompt, user_prompt)
+        yield from self.generate_stream_messages(messages, mode)
+
+    def generate_stream_with_history(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        mode: str,
+        history: list,
+    ) -> Iterator[tuple[str, str]]:
+        messages = self._build_messages(system_prompt, user_prompt, history=history)
+        yield from self.generate_stream_messages(messages, mode)
+
+    def generate_stream_messages(
+        self, messages: list[ChatMessage], mode: str
     ) -> Iterator[tuple[str, str]]:
         """Yield ``(delta_text, provider)`` tuples as the answer is produced.
 
@@ -114,11 +160,12 @@ class LLMRouter:
         if primary != "extractive":
             chain.append("extractive")
 
+        user_prompt = messages[-1]["content"] if messages else ""
         last_exc: Exception | None = None
         for provider in chain:
             produced = False
             try:
-                for delta in self._stream_provider(provider, system_prompt, user_prompt):
+                for delta in self._stream_provider_messages(provider, messages):
                     if not delta:
                         continue
                     produced = True
@@ -126,14 +173,11 @@ class LLMRouter:
             except Exception as exc:
                 last_exc = exc
                 if produced:
-                    # Partial answer already streamed under this provider; do not
-                    # fall back, just stop cleanly.
                     return
                 continue
             if produced:
                 return
 
-        # Nothing was produced by any provider (and extractive yielded empty).
         text = self._generate_extractive(
             user_prompt,
             provider_failed=primary if primary != "extractive" else None,
@@ -141,20 +185,20 @@ class LLMRouter:
         )
         yield text, "extractive"
 
-    def _stream_provider(
-        self, provider: str, system_prompt: str, user_prompt: str
+    def _stream_provider_messages(
+        self, provider: str, messages: list[ChatMessage]
     ) -> Iterator[str]:
         if provider == "openai":
-            yield from self._stream_openai(system_prompt, user_prompt)
+            yield from self._stream_openai_messages(messages)
         elif provider == "gemini":
-            yield from self._stream_gemini(system_prompt, user_prompt)
+            yield from self._stream_gemini_messages(messages)
         elif provider == "ollama":
-            yield from self._stream_ollama(system_prompt, user_prompt)
+            yield from self._stream_ollama_messages(messages)
         else:
-            # Extractive has no real token stream — emit it as a single chunk.
+            user_prompt = messages[-1]["content"] if messages else ""
             yield self._generate_extractive(user_prompt)
 
-    def _stream_openai(self, system_prompt: str, user_prompt: str) -> Iterator[str]:
+    def _stream_openai_messages(self, messages: list[ChatMessage]) -> Iterator[str]:
         if self._openai_client is None:
             from openai import OpenAI
 
@@ -166,10 +210,7 @@ class LLMRouter:
             model=self.settings.openai_chat_model,
             temperature=0.1,
             stream=True,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+            messages=messages,
         )
         for chunk in stream:
             if not chunk.choices:
@@ -178,7 +219,8 @@ class LLMRouter:
             if delta:
                 yield delta
 
-    def _stream_gemini(self, system_prompt: str, user_prompt: str) -> Iterator[str]:
+    def _stream_gemini_messages(self, messages: list[ChatMessage]) -> Iterator[str]:
+        system_prompt, contents = self._gemini_from_messages(messages)
         if not self.settings.gemini_api_key:
             raise RuntimeError("GEMINI_API_KEY is not set.")
 
@@ -192,7 +234,7 @@ class LLMRouter:
             headers={"x-goog-api-key": self.settings.gemini_api_key},
             json={
                 "system_instruction": {"parts": [{"text": system_prompt}]},
-                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "contents": contents,
                 "generationConfig": {"temperature": 0.1},
             },
             timeout=120.0,
@@ -214,7 +256,7 @@ class LLMRouter:
                         if text:
                             yield text
 
-    def _stream_ollama(self, system_prompt: str, user_prompt: str) -> Iterator[str]:
+    def _stream_ollama_messages(self, messages: list[ChatMessage]) -> Iterator[str]:
         with httpx.stream(
             "POST",
             f"{self.settings.ollama_base_url}/api/chat",
@@ -225,10 +267,7 @@ class LLMRouter:
                     "temperature": 0.1,
                     "num_ctx": self.settings.ollama_num_ctx,
                 },
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
+                "messages": messages,
             },
             timeout=self.settings.ollama_timeout,
         ) as resp:
@@ -246,7 +285,7 @@ class LLMRouter:
                 if data.get("done"):
                     break
 
-    def _generate_openai(self, system_prompt: str, user_prompt: str) -> str:
+    def _generate_openai_messages(self, messages: list[ChatMessage]) -> str:
         if self._openai_client is None:
             from openai import OpenAI
 
@@ -257,14 +296,12 @@ class LLMRouter:
         resp = self._openai_client.chat.completions.create(
             model=self.settings.openai_chat_model,
             temperature=0.1,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+            messages=messages,
         )
         return (resp.choices[0].message.content or "").strip()
 
-    def _generate_gemini(self, system_prompt: str, user_prompt: str) -> str:
+    def _generate_gemini_messages(self, messages: list[ChatMessage]) -> str:
+        system_prompt, contents = self._gemini_from_messages(messages)
         if not self.settings.gemini_api_key:
             raise RuntimeError("GEMINI_API_KEY is not set.")
 
@@ -277,7 +314,7 @@ class LLMRouter:
             headers={"x-goog-api-key": self.settings.gemini_api_key},
             json={
                 "system_instruction": {"parts": [{"text": system_prompt}]},
-                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "contents": contents,
                 "generationConfig": {"temperature": 0.1},
             },
             timeout=120.0,
@@ -293,7 +330,7 @@ class LLMRouter:
             raise RuntimeError(f"Gemini returned an empty response: {data}")
         return text
 
-    def _generate_ollama(self, system_prompt: str, user_prompt: str) -> str:
+    def _generate_ollama_messages(self, messages: list[ChatMessage]) -> str:
         resp = httpx.post(
             f"{self.settings.ollama_base_url}/api/chat",
             json={
@@ -303,15 +340,41 @@ class LLMRouter:
                     "temperature": 0.1,
                     "num_ctx": self.settings.ollama_num_ctx,
                 },
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
+                "messages": messages,
             },
             timeout=self.settings.ollama_timeout,
         )
         resp.raise_for_status()
         return resp.json()["message"]["content"].strip()
+
+    @staticmethod
+    def _gemini_from_messages(
+        messages: list[ChatMessage],
+    ) -> tuple[str, list[dict[str, object]]]:
+        system_prompt = ""
+        contents: list[dict[str, object]] = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_prompt = msg["content"]
+                continue
+            role = "model" if msg["role"] == "assistant" else "user"
+            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        return system_prompt, contents
+
+    def _generate_openai(self, system_prompt: str, user_prompt: str) -> str:
+        return self._generate_openai_messages(
+            self._build_messages(system_prompt, user_prompt)
+        )
+
+    def _generate_gemini(self, system_prompt: str, user_prompt: str) -> str:
+        return self._generate_gemini_messages(
+            self._build_messages(system_prompt, user_prompt)
+        )
+
+    def _generate_ollama(self, system_prompt: str, user_prompt: str) -> str:
+        return self._generate_ollama_messages(
+            self._build_messages(system_prompt, user_prompt)
+        )
 
     def _generate_extractive(
         self,

@@ -21,6 +21,10 @@ from pathlib import Path
 from app.config import Settings
 from app.core.answer_validation import DISCLAIMER, validate_answer
 from app.core.context_grouping import build_flat_context, build_grouped_context
+from app.core.conversation_memory import (
+    ConversationStore,
+    contextualize_query,
+)
 from app.core.embeddings import EmbeddingService
 from app.core.ingestion import ingest_file
 from app.core.llm_router import LLMRouter
@@ -59,6 +63,7 @@ class AnswerResult:
     grounded: bool
     provider: str
     hits: list[SearchHit]
+    conversation_id: str = ""
     # Set by the post-generation validation gate. ``validated`` is True when the
     # answer's citations exist and are sufficiently supported (also True when no
     # validation was performed, e.g. a refusal). ``validation_notes`` explains
@@ -75,11 +80,13 @@ class RAGOrchestrator:
         store: VectorStore,
         registry: DocumentRegistry,
         reranker: Reranker | None = None,
+        conversation_store: ConversationStore | None = None,
     ) -> None:
         self.settings = settings
         self.embeddings = embeddings
         self.store = store
         self.registry = registry
+        self.conversation_store = conversation_store or ConversationStore()
         self.llm = LLMRouter(settings)
         self.rewriter = QueryRewriter(settings, self.llm)
         self.query_engine = QueryEngine(
@@ -136,30 +143,56 @@ class RAGOrchestrator:
         return existed
 
     # ── Querying ─────────────────────────────────────────────
-    def answer(self, query: str, mode: str, top_k: int | None = None) -> AnswerResult:
-        k = top_k or self.settings.top_k
-        hits = self.query_engine.retrieve(
-            query, top_k=k, min_score=self.settings.min_score
+    def answer(
+        self,
+        query: str,
+        mode: str,
+        top_k: int | None = None,
+        conversation_id: str | None = None,
+    ) -> AnswerResult:
+        conv_id, _ = self.conversation_store.get_or_create(conversation_id)
+        history = (
+            self.conversation_store.recent_turns(
+                conv_id, self.settings.chat_memory_max_turns
+            )
+            if self.settings.chat_memory_enabled
+            else []
         )
 
-        # Retrieval confidence gate: refuse deterministically (no LLM call) when
-        # nothing was retrieved, or the best chunk is below the score threshold.
-        if not hits or self._retrieval_below_gate(hits):
-            return AnswerResult(
-                answer=NOT_FOUND_MESSAGE, grounded=False, provider="none", hits=[]
-            )
+        k = top_k or self.settings.top_k
+        retrieval_query = contextualize_query(query, history, self.settings, self.llm)
+        hits = self.query_engine.retrieve(
+            retrieval_query, top_k=k, min_score=self.settings.min_score
+        )
 
-        # Context grouping reorders chunks for coherence and returns the
-        # marker-aligned ordering, so citations[i] maps to ordered_hits[i].
+        if not hits or self._retrieval_below_gate(hits):
+            result = AnswerResult(
+                answer=NOT_FOUND_MESSAGE,
+                grounded=False,
+                provider="none",
+                hits=[],
+                conversation_id=conv_id,
+            )
+            self._remember_exchange(conv_id, query, result.answer)
+            return result
+
         if self.settings.context_grouping_enabled:
             context, ordered_hits = build_grouped_context(hits)
         else:
             context, ordered_hits = build_flat_context(hits)
 
         user_prompt = self._build_prompt(query, context)
-        answer, provider = self.llm.generate(SYSTEM_PROMPT, user_prompt, mode=mode)
+        if history and self.settings.chat_memory_enabled:
+            answer, provider = self.llm.generate_with_history(
+                SYSTEM_PROMPT, user_prompt, mode=mode, history=history
+            )
+        else:
+            answer, provider = self.llm.generate(SYSTEM_PROMPT, user_prompt, mode=mode)
 
-        return self._validate(answer, provider, ordered_hits)
+        result = self._validate(answer, provider, ordered_hits)
+        result.conversation_id = conv_id
+        self._remember_exchange(conv_id, query, result.answer)
+        return result
 
     def _retrieval_below_gate(self, hits: list[SearchHit]) -> bool:
         if not self.settings.retrieval_gate_enabled:
@@ -196,6 +229,16 @@ class RAGOrchestrator:
         return (
             f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
             "Answer with inline [n] citations."
+        )
+
+    def _remember_exchange(self, conversation_id: str, query: str, answer: str) -> None:
+        if not self.settings.chat_memory_enabled:
+            return
+        self.conversation_store.append_exchange(
+            conversation_id,
+            query,
+            answer,
+            max_turns=self.settings.chat_memory_max_turns,
         )
 
 

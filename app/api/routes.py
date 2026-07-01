@@ -12,11 +12,13 @@ from fastapi.responses import StreamingResponse
 from app.config import get_settings
 from app.core.ingestion import SUPPORTED_EXTENSIONS
 from app.core.orchestrator import RAGOrchestrator
-from app.dependencies import get_orchestrator
+from app.dependencies import get_conversation_store, get_orchestrator
 from app.models import (
     ChatRequest,
     ChatResponse,
+    ChatTurnModel,
     Citation,
+    ConversationResponse,
     DocumentInfo,
     DocumentList,
     HealthResponse,
@@ -24,6 +26,31 @@ from app.models import (
 )
 
 router = APIRouter()
+
+
+def _to_citations(hits) -> list[Citation]:
+    return [
+        Citation(
+            marker=i,
+            document_id=hit.chunk.document_id,
+            filename=hit.chunk.filename,
+            chunk_id=hit.chunk.id,
+            score=round(hit.score, 4),
+            snippet=hit.chunk.text[:280] + ("…" if len(hit.chunk.text) > 280 else ""),
+        )
+        for i, hit in enumerate(hits, start=1)
+    ]
+
+
+def _to_chat_response(result) -> ChatResponse:
+    return ChatResponse(
+        answer=result.answer,
+        grounded=result.grounded,
+        provider=result.provider,
+        citations=_to_citations(result.hits),
+        validation_notes=result.validation_notes,
+        conversation_id=result.conversation_id,
+    )
 
 
 def _to_info(record) -> DocumentInfo:
@@ -107,28 +134,43 @@ def chat(
         from app.dependencies import get_langchain_rag
 
         result = get_langchain_rag().answer(
-            query=request.query, mode=request.mode, top_k=request.top_k
+            query=request.query,
+            mode=request.mode,
+            top_k=request.top_k,
+            conversation_id=request.conversation_id,
         )
     else:
-        result = orch.answer(query=request.query, mode=request.mode, top_k=request.top_k)
-    citations = [
-        Citation(
-            marker=i,
-            document_id=hit.chunk.document_id,
-            filename=hit.chunk.filename,
-            chunk_id=hit.chunk.id,
-            score=round(hit.score, 4),
-            snippet=hit.chunk.text[:280] + ("…" if len(hit.chunk.text) > 280 else ""),
+        result = orch.answer(
+            query=request.query,
+            mode=request.mode,
+            top_k=request.top_k,
+            conversation_id=request.conversation_id,
         )
-        for i, hit in enumerate(result.hits, start=1)
-    ]
-    return ChatResponse(
-        answer=result.answer,
-        grounded=result.grounded,
-        provider=result.provider,
-        citations=citations,
-        validation_notes=result.validation_notes,
+    return _to_chat_response(result)
+
+
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationResponse,
+    tags=["chat"],
+)
+def get_conversation(conversation_id: str) -> ConversationResponse:
+    conv = get_conversation_store().get(conversation_id)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return ConversationResponse(
+        id=conv.id,
+        turns=[ChatTurnModel(role=t.role, content=t.content) for t in conv.turns],
+        created_at=conv.created_at,
+        updated_at=conv.updated_at,
     )
+
+
+@router.delete("/conversations/{conversation_id}", tags=["chat"])
+def delete_conversation(conversation_id: str) -> dict:
+    if not get_conversation_store().delete(conversation_id):
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+    return {"message": "Conversation deleted.", "conversation_id": conversation_id}
 
 
 @router.post("/chat/stream", tags=["chat"])
@@ -147,7 +189,10 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
 
     def event_stream():
         for event in rag.stream(
-            query=request.query, mode=request.mode, top_k=request.top_k
+            query=request.query,
+            mode=request.mode,
+            top_k=request.top_k,
+            conversation_id=request.conversation_id,
         ):
             yield f"data: {json.dumps(event)}\n\n"
 

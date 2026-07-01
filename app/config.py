@@ -80,6 +80,15 @@ class Settings(BaseSettings):
     answer_validation_enabled: bool = True
     answer_validation_min_support: float = 0.5
 
+    # ── Chat memory (multi-turn history) ─────────────────────
+    # Keeps recent user/assistant turns per conversation_id (in-process).
+    # Used to contextualize follow-up retrieval queries and pass prior turns to
+    # the LLM. Send conversation_id on /chat to continue a thread.
+    chat_memory_enabled: bool = True
+    chat_memory_max_turns: int = 10  # max stored messages (user + assistant)
+    chat_memory_contextualize: bool = True  # rewrite follow-ups for retrieval
+    chat_memory_contextualize_use_llm: bool = True  # LLM rewrite when available
+
     # ── LLM Router ───────────────────────────────────────────
     # "auto" | "openai" | "gemini" | "ollama" | "extractive"
     llm_provider: str = "auto"

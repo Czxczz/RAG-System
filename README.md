@@ -160,6 +160,11 @@ curl -X POST http://localhost:8000/chat \
 curl -N -X POST http://localhost:8000/chat/stream \
   -H "Content-Type: application/json" \
   -d '{"query": "What are the key findings?", "mode": "gemini"}'
+
+# Multi-turn chat — reuse conversation_id from the previous response
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"query": "How do I release it?", "mode": "gemini", "conversation_id": "<id-from-prior-response>"}'
 ```
 
 | `engine` | Description |
@@ -174,7 +179,7 @@ LangChain path. Each `data:` line is a JSON event:
 | --- | --- | --- |
 | `citations` | `{citations: [...]}` | once, before any tokens (render sources early) |
 | `token` | `{text: "..."}` | repeated, incremental answer deltas |
-| `done` | `{grounded, provider, validation_notes}` | terminal event |
+| `done` | `{grounded, provider, validation_notes, conversation_id}` | terminal event |
 
 The retrieval gate refuses *before* streaming (no tokens). The answer
 validation gate runs *after* the stream; if it fails, the disclaimer is sent as
@@ -190,9 +195,36 @@ Response:
   "citations": [
     {"marker": 1, "filename": "notes.pdf", "score": 0.71, "snippet": "..."}
   ],
-  "validation_notes": []
+  "validation_notes": [],
+  "conversation_id": "a1b2c3..."
 }
 ```
+
+### Chat memory (multi-turn)
+
+Send optional `conversation_id` on `/chat` or `/chat/stream` to continue a
+thread. The API returns a `conversation_id` on every response — store it client-side
+(e.g. in your Web UI) and send it on the next message.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /chat` | Ask with memory (custom or langchain engine) |
+| `POST /chat/stream` | Stream with memory (LangChain path) |
+| `GET /conversations/{id}` | Inspect stored turns |
+| `DELETE /conversations/{id}` | Clear a thread |
+
+Memory is **in-process** (like the FAISS index): it survives across requests
+while the server is running, but resets on restart. Recent turns are used in two
+ways:
+
+1. **Retrieval** — follow-ups like "How do I release it?" are rewritten into a
+   standalone search query so FAISS still finds the right chunks.
+2. **Generation** — prior user/assistant turns are passed to the LLM so pronouns
+   resolve, while the current turn still includes a fresh CONTEXT block with new
+   citations.
+
+Configure via `.env`: `CHAT_MEMORY_ENABLED`, `CHAT_MEMORY_MAX_TURNS`,
+`CHAT_MEMORY_CONTEXTUALIZE`, `CHAT_MEMORY_CONTEXTUALIZE_USE_LLM`.
 
 ---
 
@@ -321,6 +353,7 @@ Eval (`scripts/run_eval.py`) still uses the **custom** orchestrator by default.
 - [x] Taxonomy query heuristic + multi-variant rerank
 - [x] LangChain LCEL wrapper (`engine: langchain` on `/chat`)
 - [x] Streaming responses (`POST /chat/stream`, SSE, LangChain path)
+- [x] Chat memory / multi-turn history (`conversation_id`)
 - [ ] LangGraph (retrieve → gate → generate → validate as graph nodes)
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation

@@ -44,6 +44,25 @@ class ChatRequest(BaseModel):
             "'langchain' = LCEL wrapper over the same components."
         ),
     )
+    conversation_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional conversation id for multi-turn chat history. Omit to start "
+            "a new thread; reuse the id returned in the response to continue."
+        ),
+    )
+
+
+class ChatTurnModel(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ConversationResponse(BaseModel):
+    id: str
+    turns: list[ChatTurnModel]
+    created_at: str
+    updated_at: str
 
 
 class Citation(BaseModel):
@@ -69,6 +88,10 @@ class ChatResponse(BaseModel):
     validation_notes: list[str] = Field(
         default_factory=list,
         description="Warnings from the answer validation gate, if any.",
+    )
+    conversation_id: str = Field(
+        ...,
+        description="Conversation id — send on the next request to continue the thread.",
     )
 
 

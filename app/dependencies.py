@@ -8,11 +8,17 @@ from __future__ import annotations
 from functools import lru_cache
 
 from app.config import get_settings
+from app.core.conversation_memory import ConversationStore
 from app.core.embeddings import get_embedding_service
 from app.core.orchestrator import RAGOrchestrator
 from app.core.registry import DocumentRegistry
 from app.core.reranker import get_reranker
 from app.core.vector_store import VectorStore
+
+
+@lru_cache
+def get_conversation_store() -> ConversationStore:
+    return ConversationStore()
 
 
 @lru_cache
@@ -32,6 +38,7 @@ def get_orchestrator() -> RAGOrchestrator:
         store=store,
         registry=registry,
         reranker=reranker,
+        conversation_store=get_conversation_store(),
     )
 
 
