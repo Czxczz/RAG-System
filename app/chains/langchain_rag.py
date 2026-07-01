@@ -23,6 +23,7 @@ Design notes
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -71,6 +72,20 @@ def hit_to_document(hit: SearchHit, marker: int) -> Document:
             "score": hit.score,
         },
     )
+
+
+def _citation_dict(marker: int, hit: SearchHit) -> dict[str, Any]:
+    """Citation payload for streaming events (mirrors ``models.Citation``)."""
+    text = hit.chunk.text
+    snippet = text[:280] + ("…" if len(text) > 280 else "")
+    return {
+        "marker": marker,
+        "document_id": hit.chunk.document_id,
+        "filename": hit.chunk.filename,
+        "chunk_id": hit.chunk.id,
+        "score": round(hit.score, 4),
+        "snippet": snippet,
+    }
 
 
 class QueryEngineRetriever(BaseRetriever):
@@ -174,6 +189,81 @@ class LangChainRAG:
             {"context": context, "query": query, "mode": mode}
         )
         return self._validate(generated["answer"], generated["provider"], ordered_hits)
+
+    def stream(
+        self, query: str, mode: str = "auto", top_k: int | None = None
+    ) -> Iterator[dict[str, Any]]:
+        """Stream the RAG answer as Server-Sent-Event-style dict events.
+
+        Event shapes (``type`` discriminates):
+          * ``{"type": "citations", "citations": [...]}`` — emitted once, before
+            any tokens, so the client can render sources immediately.
+          * ``{"type": "token", "text": str}`` — incremental answer deltas.
+          * ``{"type": "done", "grounded": bool, "provider": str,
+            "validation_notes": [...]}`` — terminal event.
+
+        The retrieval gate refuses *before* the LLM is called (no token stream).
+        The answer validation gate runs *after* the stream completes, since it
+        needs the full answer; if it fails, the disclaimer is streamed as a final
+        token and ``grounded`` is reported ``False`` in the done event.
+        """
+        if top_k is not None and top_k != self.retriever.top_k:
+            self.retriever.top_k = top_k
+
+        hits = self.retriever.retrieve_hits(query)
+        if not hits or self._retrieval_below_gate(hits):
+            yield {"type": "token", "text": NOT_FOUND_MESSAGE}
+            yield {
+                "type": "done",
+                "grounded": False,
+                "provider": "none",
+                "validation_notes": [],
+            }
+            return
+
+        if self.settings.context_grouping_enabled:
+            context, ordered_hits = build_grouped_context(hits)
+        else:
+            context, ordered_hits = build_flat_context(hits)
+
+        yield {
+            "type": "citations",
+            "citations": [
+                _citation_dict(i, hit) for i, hit in enumerate(ordered_hits, start=1)
+            ],
+        }
+
+        messages = self.prompt.format_messages(context=context, query=query)
+        system_text = messages[0].content
+        user_text = messages[1].content
+
+        parts: list[str] = []
+        provider = "none"
+        for delta, prov in self.llm.generate_stream(system_text, user_text, mode):
+            provider = prov
+            parts.append(delta)
+            yield {"type": "token", "text": delta}
+        answer = "".join(parts)
+
+        grounded = True
+        notes: list[str] = []
+        if self.settings.answer_validation_enabled and answer != NOT_FOUND_MESSAGE:
+            result = validate_answer(
+                answer,
+                ordered_hits,
+                min_support=self.settings.answer_validation_min_support,
+            )
+            grounded = result.passed
+            notes = result.notes
+            if not result.passed:
+                yield {"type": "token", "text": DISCLAIMER}
+
+        yield {
+            "type": "done",
+            "grounded": grounded,
+            "provider": provider,
+            "validation_notes": notes,
+        }
 
     def as_runnable(self) -> Runnable:
         """Expose the end-to-end flow as a single LCEL Runnable.

@@ -48,6 +48,13 @@ class _FakeLLM:
         self.calls.append((system, user, mode))
         return self._answer, self._provider
 
+    def generate_stream(self, system: str, user: str, mode: str):
+        self.calls.append((system, user, mode))
+        # Stream word-by-word to exercise multi-delta accumulation.
+        words = self._answer.split(" ")
+        for i, word in enumerate(words):
+            yield (word if i == 0 else " " + word), self._provider
+
 
 def _rag(hits, answer, settings=None, provider="gemini") -> tuple[LangChainRAG, _FakeLLM]:
     settings = settings or Settings()
@@ -123,3 +130,49 @@ def test_as_runnable_invocation():
     result = chain.invoke({"query": "inbound?", "mode": "gemini", "top_k": 3})
     assert result.grounded is True
     assert "[1]" in result.answer
+
+
+# ── Streaming ────────────────────────────────────────────────
+def test_stream_emits_citations_tokens_then_done():
+    hits = [_hit("An Elastic IP address is static and public.", 0)]
+    rag, llm = _rag(hits, answer="An Elastic IP is static [1].")
+    events = list(rag.stream("What is an Elastic IP?", mode="gemini"))
+
+    assert events[0]["type"] == "citations"
+    assert events[0]["citations"][0]["marker"] == 1
+    assert events[0]["citations"][0]["filename"] == "ec2-ug.pdf"
+
+    tokens = [e for e in events if e["type"] == "token"]
+    assert "".join(t["text"] for t in tokens) == "An Elastic IP is static [1]."
+
+    done = events[-1]
+    assert done["type"] == "done"
+    assert done["grounded"] is True
+    assert done["provider"] == "gemini"
+    assert done["validation_notes"] == []
+
+
+def test_stream_retrieval_gate_refuses_without_streaming_tokens():
+    settings = Settings(retrieval_gate_enabled=True, retrieval_gate_min_score=3.0)
+    hits = [_hit("weak match", 0, score=1.0)]
+    rag, llm = _rag(hits, answer="should not be used", settings=settings)
+    events = list(rag.stream("q", mode="gemini"))
+
+    assert not any(e["type"] == "citations" for e in events)
+    assert events[0] == {"type": "token", "text": NOT_FOUND_MESSAGE}
+    assert events[-1]["type"] == "done"
+    assert events[-1]["grounded"] is False
+    assert events[-1]["provider"] == "none"
+    assert llm.calls == []
+
+
+def test_stream_appends_disclaimer_when_validation_fails():
+    settings = Settings(answer_validation_enabled=True, answer_validation_min_support=0.5)
+    hits = [_hit("Spot Instances can be interrupted.", 0)]
+    rag, _ = _rag(hits, answer="Spot hibernates always [2].", settings=settings)
+    events = list(rag.stream("q", mode="gemini"))
+
+    full = "".join(e["text"] for e in events if e["type"] == "token")
+    assert "may not be fully supported" in full
+    assert events[-1]["grounded"] is False
+    assert events[-1]["validation_notes"]

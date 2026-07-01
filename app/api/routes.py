@@ -1,11 +1,13 @@
 """HTTP API routes."""
 from __future__ import annotations
 
+import json
 import shutil
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
 from app.core.ingestion import SUPPORTED_EXTENSIONS
@@ -126,4 +128,31 @@ def chat(
         provider=result.provider,
         citations=citations,
         validation_notes=result.validation_notes,
+    )
+
+
+@router.post("/chat/stream", tags=["chat"])
+def chat_stream(request: ChatRequest) -> StreamingResponse:
+    """Stream a grounded answer as Server-Sent Events (LangChain engine).
+
+    Emits ``data: {...}`` lines with ``type`` of ``citations`` (sources, sent
+    first), ``token`` (incremental answer deltas), and ``done`` (final
+    grounded/provider/validation status). Streaming always uses the LangChain
+    (LCEL) path, which reuses the same FAISS index, retrieval gate, and answer
+    validation gate as the custom engine.
+    """
+    from app.dependencies import get_langchain_rag
+
+    rag = get_langchain_rag()
+
+    def event_stream():
+        for event in rag.stream(
+            query=request.query, mode=request.mode, top_k=request.top_k
+        ):
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

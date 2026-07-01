@@ -13,6 +13,9 @@ surface which engine actually answered.
 """
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator
+
 import httpx
 
 from app.config import Settings
@@ -88,6 +91,160 @@ class LLMRouter:
             self._generate_extractive(user_prompt, provider_failed=primary, error=note),
             "extractive",
         )
+
+    # ── Streaming generation ─────────────────────────────────
+    def generate_stream(
+        self, system_prompt: str, user_prompt: str, mode: str
+    ) -> Iterator[tuple[str, str]]:
+        """Yield ``(delta_text, provider)`` tuples as the answer is produced.
+
+        Mirrors :meth:`generate`'s routing + fallback cascade, with two
+        important streaming caveats:
+
+        * Fallback only happens *before* the first token is emitted. Once a
+          provider has streamed any output we never switch providers mid-answer
+          (that would produce a garbled, doubled response).
+        * ``extractive`` is always the terminal fallback so the stream is never
+          empty, even fully offline.
+        """
+        primary = self._resolve_provider(mode)
+        chain = [primary]
+        if primary in {"openai", "gemini"} and self._ollama_available():
+            chain.append("ollama")
+        if primary != "extractive":
+            chain.append("extractive")
+
+        last_exc: Exception | None = None
+        for provider in chain:
+            produced = False
+            try:
+                for delta in self._stream_provider(provider, system_prompt, user_prompt):
+                    if not delta:
+                        continue
+                    produced = True
+                    yield delta, provider
+            except Exception as exc:
+                last_exc = exc
+                if produced:
+                    # Partial answer already streamed under this provider; do not
+                    # fall back, just stop cleanly.
+                    return
+                continue
+            if produced:
+                return
+
+        # Nothing was produced by any provider (and extractive yielded empty).
+        text = self._generate_extractive(
+            user_prompt,
+            provider_failed=primary if primary != "extractive" else None,
+            error=str(last_exc) if last_exc else None,
+        )
+        yield text, "extractive"
+
+    def _stream_provider(
+        self, provider: str, system_prompt: str, user_prompt: str
+    ) -> Iterator[str]:
+        if provider == "openai":
+            yield from self._stream_openai(system_prompt, user_prompt)
+        elif provider == "gemini":
+            yield from self._stream_gemini(system_prompt, user_prompt)
+        elif provider == "ollama":
+            yield from self._stream_ollama(system_prompt, user_prompt)
+        else:
+            # Extractive has no real token stream — emit it as a single chunk.
+            yield self._generate_extractive(user_prompt)
+
+    def _stream_openai(self, system_prompt: str, user_prompt: str) -> Iterator[str]:
+        if self._openai_client is None:
+            from openai import OpenAI
+
+            if not self.settings.openai_api_key:
+                raise RuntimeError("OPENAI_API_KEY is not set.")
+            self._openai_client = OpenAI(api_key=self.settings.openai_api_key)
+
+        stream = self._openai_client.chat.completions.create(
+            model=self.settings.openai_chat_model,
+            temperature=0.1,
+            stream=True,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+
+    def _stream_gemini(self, system_prompt: str, user_prompt: str) -> Iterator[str]:
+        if not self.settings.gemini_api_key:
+            raise RuntimeError("GEMINI_API_KEY is not set.")
+
+        url = (
+            f"{self.settings.gemini_base_url}/v1beta/models/"
+            f"{self.settings.gemini_model}:streamGenerateContent?alt=sse"
+        )
+        with httpx.stream(
+            "POST",
+            url,
+            headers={"x-goog-api-key": self.settings.gemini_api_key},
+            json={
+                "system_instruction": {"parts": [{"text": system_prompt}]},
+                "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                "generationConfig": {"temperature": 0.1},
+            },
+            timeout=120.0,
+        ) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                payload = line[len("data:"):].strip()
+                if not payload or payload == "[DONE]":
+                    continue
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                for cand in data.get("candidates", []):
+                    for part in cand.get("content", {}).get("parts", []):
+                        text = part.get("text")
+                        if text:
+                            yield text
+
+    def _stream_ollama(self, system_prompt: str, user_prompt: str) -> Iterator[str]:
+        with httpx.stream(
+            "POST",
+            f"{self.settings.ollama_base_url}/api/chat",
+            json={
+                "model": self.settings.ollama_model,
+                "stream": True,
+                "options": {
+                    "temperature": 0.1,
+                    "num_ctx": self.settings.ollama_num_ctx,
+                },
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            },
+            timeout=self.settings.ollama_timeout,
+        ) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                content = data.get("message", {}).get("content")
+                if content:
+                    yield content
+                if data.get("done"):
+                    break
 
     def _generate_openai(self, system_prompt: str, user_prompt: str) -> str:
         if self._openai_client is None:

@@ -155,12 +155,30 @@ curl -X POST http://localhost:8000/chat \
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"query": "What are the key findings?", "mode": "gemini", "engine": "langchain"}'
+
+# Stream the answer token-by-token via Server-Sent Events (LangChain path)
+curl -N -X POST http://localhost:8000/chat/stream \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the key findings?", "mode": "gemini"}'
 ```
 
 | `engine` | Description |
 | --- | --- |
 | `custom` (default) | Built-in `RAGOrchestrator` — used by eval and default `/chat` |
 | `langchain` | LCEL wrapper in `app/chains/` — same `QueryEngine` + `LLMRouter` |
+
+`POST /chat/stream` returns `text/event-stream` (SSE) and always uses the
+LangChain path. Each `data:` line is a JSON event:
+
+| `type` | Payload | When |
+| --- | --- | --- |
+| `citations` | `{citations: [...]}` | once, before any tokens (render sources early) |
+| `token` | `{text: "..."}` | repeated, incremental answer deltas |
+| `done` | `{grounded, provider, validation_notes}` | terminal event |
+
+The retrieval gate refuses *before* streaming (no tokens). The answer
+validation gate runs *after* the stream; if it fails, the disclaimer is sent as
+a final `token` and `done.grounded` is `false`.
 
 Response:
 
@@ -274,6 +292,12 @@ of truth for retrieval quality in `app/core/query_engine.py`.
 chain. **What it reuses:** `QueryEngine`, `build_grouped_context`, `LLMRouter`,
 and `validate_answer`.
 
+**Streaming** is implemented on this path only (`POST /chat/stream`):
+`LangChainRAG.stream()` reuses the retrieval + validation gates and streams LLM
+deltas via `LLMRouter.generate_stream()`, which supports OpenAI, Gemini
+(`streamGenerateContent`), and Ollama, with the same cloud→Ollama→extractive
+fallback as non-streaming generation.
+
 Compare both engines on the same query:
 
 ```bash
@@ -296,10 +320,10 @@ Eval (`scripts/run_eval.py`) still uses the **custom** orchestrator by default.
 - [x] Retrieval confidence gate + answer validation gate
 - [x] Taxonomy query heuristic + multi-variant rerank
 - [x] LangChain LCEL wrapper (`engine: langchain` on `/chat`)
+- [x] Streaming responses (`POST /chat/stream`, SSE, LangChain path)
 - [ ] LangGraph (retrieve → gate → generate → validate as graph nodes)
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
-- [ ] Streaming responses
 - [ ] Per-document / per-collection scoping
 
 ---
