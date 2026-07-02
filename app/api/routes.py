@@ -139,6 +139,15 @@ def chat(
             top_k=request.top_k,
             conversation_id=request.conversation_id,
         )
+    elif request.engine == "langgraph":
+        from app.dependencies import get_langgraph_rag
+
+        result = get_langgraph_rag().answer(
+            query=request.query,
+            mode=request.mode,
+            top_k=request.top_k,
+            conversation_id=request.conversation_id,
+        )
     else:
         result = orch.answer(
             query=request.query,
