@@ -312,9 +312,9 @@ python scripts/compact_index.py
 
 ## LangChain integration (optional)
 
-The project includes a **parallel LangChain (LCEL) path** that wraps the tuned
-pipeline without replacing it. This is useful for learning LangChain, adding
-streaming/memory later, and migrating toward LangGraph — while keeping one source
+The project includes **parallel LangChain and LangGraph paths** that wrap the
+tuned pipeline without replacing it. Useful for streaming, composable chains,
+and explicit graph orchestration — while keeping one source
 of truth for retrieval quality in `app/core/query_engine.py`.
 
 | Layer | Location | Role |
@@ -350,6 +350,8 @@ conditional retrieval gate → `build_context` → `generate` → `validate` →
 
 ## Roadmap
 
+### Shipped (core pipeline)
+
 - [x] Cross-encoder reranking
 - [x] Query rewriting (multi-query)
 - [x] Diversity-aware reranking (MMR + hard dedup + text dedupe)
@@ -361,10 +363,28 @@ conditional retrieval gate → `build_context` → `generate` → `validate` →
 - [x] LangChain LCEL wrapper (`engine: langchain` on `/chat`)
 - [x] Streaming responses (`POST /chat/stream`, SSE, LangChain path)
 - [x] Chat memory / multi-turn history (`conversation_id`)
-- [x] LangGraph (retrieve → gate → generate → validate as graph nodes, `engine: langgraph`)
-- [ ] Web UI (chat + upload)
-- [ ] Auth + multi-user isolation
-- [ ] Per-document / per-collection scoping
+- [x] LangGraph (`engine: langgraph` — retrieve → gate → generate → validate)
+
+### v1 finish line (this repo)
+
+Goal: **end-to-end private document RAG** you can demo locally — chat, upload,
+eval on multiple PDFs. No multimodal; that is a separate repo (see below).
+
+| Milestone | Scope |
+| --- | --- |
+| **Web UI** | Chat, citation panel, streaming (`/chat/stream`), upload, `conversation_id` in browser |
+| **Multi-document** | Per-document / collection scoping on retrieval + upload |
+| **Multi-doc eval** | Extend `eval/` beyond `ec2-ug.pdf` (2–3 corpora, mixed refusal cases) |
+| **LangSmith** (optional) | Dev tracing for LangGraph/UI debugging — not required to ship |
+| **Query logging** (optional) | Local SQLite log: query, engine, provider, grounded, latency |
+
+After v1: polish README, demo script, tag **`v1.0`**.
+
+### Next repo — PrivateRAG Multimodal (out of scope for v1)
+
+Not planned in this repository. A future project would cover image / audio /
+video ingestion, multimodal embeddings, and unified retrieval — different eval,
+compute, and storage requirements than text-only PrivateRAG.
 
 ---
 
