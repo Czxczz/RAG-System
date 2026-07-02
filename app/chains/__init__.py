@@ -7,5 +7,6 @@ lets us learn / adopt LangChain (and later LangGraph) without forking the
 retrieval logic that the EC2 eval was tuned against.
 """
 from app.chains.langchain_rag import LangChainRAG, QueryEngineRetriever
+from app.chains.langgraph_rag import LangGraphRAG
 
-__all__ = ["LangChainRAG", "QueryEngineRetriever"]
+__all__ = ["LangChainRAG", "LangGraphRAG", "QueryEngineRetriever"]

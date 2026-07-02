@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the custom orchestrator vs the LangChain (LCEL) RAG path.
+"""Compare the custom orchestrator vs LangChain (LCEL) vs LangGraph paths.
 
 Both engines share the same FAISS index, embeddings, reranker, and LLM router,
 so this isolates the *composition* layer. Useful for verifying parity while
@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.chains.langchain_rag import build_langchain_rag
+from app.chains.langgraph_rag import build_langgraph_rag
 from app.dependencies import get_orchestrator
 from app.eval.schemas import EvalDataset
 
@@ -65,6 +66,7 @@ def main() -> int:
         print("LLM query rewriting disabled for deterministic comparison.")
 
     lc = build_langchain_rag(orch)
+    lg = build_langgraph_rag(orch)
     top_k = args.top_k or orch.settings.top_k
 
     if args.query:
@@ -83,11 +85,17 @@ def main() -> int:
         print(f"# {case_id}: {query}")
         custom = orch.answer(query=query, mode=args.mode, top_k=top_k)
         lc_result = lc.answer(query=query, mode=args.mode, top_k=top_k)
+        lg_result = lg.answer(query=query, mode=args.mode, top_k=top_k)
 
         _summarize("CUSTOM orchestrator", custom.answer, custom.provider, custom.grounded, custom.hits)
         _summarize("LANGCHAIN (LCEL)", lc_result.answer, lc_result.provider, lc_result.grounded, lc_result.hits)
+        _summarize("LANGGRAPH", lg_result.answer, lg_result.provider, lg_result.grounded, lg_result.hits)
 
-        same_chunks = {h.chunk.id for h in custom.hits} == {h.chunk.id for h in lc_result.hits}
+        same_chunks = (
+            {h.chunk.id for h in custom.hits}
+            == {h.chunk.id for h in lc_result.hits}
+            == {h.chunk.id for h in lg_result.hits}
+        )
         print(f"\n→ same retrieved chunks: {same_chunks}")
         agreements += int(same_chunks)
 

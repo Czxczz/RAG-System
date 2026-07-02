@@ -52,3 +52,11 @@ def get_langchain_rag():
     from app.chains.langchain_rag import build_langchain_rag
 
     return build_langchain_rag(get_orchestrator())
+
+
+@lru_cache
+def get_langgraph_rag():
+    """LangGraph RAG path sharing the orchestrator's components."""
+    from app.chains.langgraph_rag import build_langgraph_rag
+
+    return build_langgraph_rag(get_orchestrator())

@@ -24,12 +24,12 @@ answers with citations**, powered by a **local or cloud LLM** of your choice.
 ## Architecture
 
 ```
-Client (HTTP)  ─►  FastAPI Gateway  ─►  engine: custom | langchain
+Client (HTTP)  ─►  FastAPI Gateway  ─►  engine: custom | langchain | langgraph
                                           │
                         ┌─────────────────┴──────────────────┐
                         ▼                                     ▼
-              RAG Orchestrator (default)          LangChainRAG (LCEL)
-              app/core/orchestrator.py            app/chains/langchain_rag.py
+              RAG Orchestrator (default)          LangChainRAG / LangGraphRAG
+              app/core/orchestrator.py            app/chains/
                         │                                     │
                         └──────────────┬──────────────────────┘
                                        ▼
@@ -57,8 +57,9 @@ app/
 ├── models.py            # Pydantic request/response schemas
 ├── dependencies.py      # Composition root (singletons)
 ├── api/routes.py        # HTTP endpoints
-├── chains/              # LangChain (LCEL) wrapper — optional parallel RAG path
-│   └── langchain_rag.py # QueryEngineRetriever + LangChainRAG
+├── chains/              # LangChain + LangGraph wrappers (optional parallel paths)
+│   ├── langchain_rag.py # LCEL: QueryEngineRetriever + LangChainRAG
+│   └── langgraph_rag.py # LangGraph: retrieve → gate → generate → validate
 ├── eval/                # Offline eval schemas, metrics, runner
 └── core/
     ├── ingestion.py        # load → extract → clean → chunk
@@ -171,6 +172,7 @@ curl -X POST http://localhost:8000/chat \
 | --- | --- |
 | `custom` (default) | Built-in `RAGOrchestrator` — used by eval and default `/chat` |
 | `langchain` | LCEL wrapper in `app/chains/` — same `QueryEngine` + `LLMRouter` |
+| `langgraph` | LangGraph node graph in `app/chains/langgraph_rag.py` — same components |
 
 `POST /chat/stream` returns `text/event-stream` (SSE) and always uses the
 LangChain path. Each `data:` line is a JSON event:
@@ -339,6 +341,11 @@ python scripts/compare_engines.py --case-id imdsv2-require --mode gemini
 
 Eval (`scripts/run_eval.py`) still uses the **custom** orchestrator by default.
 
+**LangGraph** (`engine: langgraph`) expresses the same flow as explicit graph
+nodes in `app/chains/langgraph_rag.py`: `load_memory` → `retrieve` →
+conditional retrieval gate → `build_context` → `generate` → `validate` →
+`save_memory`. Compare all three engines with `scripts/compare_engines.py`.
+
 ---
 
 ## Roadmap
@@ -354,7 +361,7 @@ Eval (`scripts/run_eval.py`) still uses the **custom** orchestrator by default.
 - [x] LangChain LCEL wrapper (`engine: langchain` on `/chat`)
 - [x] Streaming responses (`POST /chat/stream`, SSE, LangChain path)
 - [x] Chat memory / multi-turn history (`conversation_id`)
-- [ ] LangGraph (retrieve → gate → generate → validate as graph nodes)
+- [x] LangGraph (retrieve → gate → generate → validate as graph nodes, `engine: langgraph`)
 - [ ] Web UI (chat + upload)
 - [ ] Auth + multi-user isolation
 - [ ] Per-document / per-collection scoping
