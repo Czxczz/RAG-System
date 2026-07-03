@@ -4,7 +4,7 @@
 The eval dataset ``eval/dataset.multidoc.json`` expects these canonical names:
 
   * ``ec2-ug.pdf`` — Amazon EC2 User Guide
-  * ``ec2-instance-types.pdf`` — Amazon EC2 Instance Types guide
+  * ``ec2-types.pdf`` — Amazon EC2 Instance Types guide
 
 Example (rename on ingest so eval cases match):
 
@@ -14,7 +14,7 @@ Example (rename on ingest so eval cases match):
 
   python scripts/ingest_eval_corpus.py \\
     --file ~/Downloads/"Amazon EC2 Instance Types.pdf" \\
-    --as ec2-instance-types.pdf
+    --as ec2-types.pdf
 
 Re-ingesting the same ``--as`` filename replaces the previous document with
 that name in the registry/index.
@@ -33,7 +33,7 @@ from app.dependencies import get_orchestrator
 
 DEFAULT_CORPUS = (
     ("ec2-ug.pdf", "Amazon EC2 User Guide"),
-    ("ec2-instance-types.pdf", "Amazon EC2 Instance Types"),
+    ("ec2-types.pdf", "Amazon EC2 Instance Types"),
 )
 
 
@@ -81,7 +81,7 @@ def main() -> int:
         "--corpus-dir",
         type=Path,
         default=ROOT / "eval" / "corpus",
-        help="Directory containing ec2-ug.pdf and ec2-instance-types.pdf.",
+        help="Directory containing ec2-ug.pdf and ec2-types.pdf.",
     )
     parser.add_argument(
         "--list-expected",

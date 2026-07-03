@@ -116,7 +116,7 @@ def test_source_accuracy_requires_expected_filename():
         id="types",
         query="How many vCPUs does m5.xlarge have?",
         relevant_keywords=["m5.xlarge", "vCPU"],
-        expected_source_filenames=["ec2-instance-types.pdf"],
+        expected_source_filenames=["ec2-types.pdf"],
     )
     wrong_doc = SearchHit(
         chunk=StoredChunk(
@@ -133,7 +133,7 @@ def test_source_accuracy_requires_expected_filename():
         chunk=StoredChunk(
             id="types:0",
             document_id="types",
-            filename="ec2-instance-types.pdf",
+            filename="ec2-types.pdf",
             chunk_index=0,
             page=1,
             text="m5.xlarge provides 4 vCPU",

@@ -27,5 +27,5 @@ def test_resolve_document_ids_maps_filenames(tmp_path):
 def test_resolve_document_ids_raises_when_missing(tmp_path):
     registry = DocumentRegistry(tmp_path / "documents.json")
 
-    with pytest.raises(ValueError, match="ec2-instance-types.pdf"):
-        resolve_document_ids(registry, ["ec2-instance-types.pdf"])
+    with pytest.raises(ValueError, match="ec2-types.pdf"):
+        resolve_document_ids(registry, ["ec2-types.pdf"])
