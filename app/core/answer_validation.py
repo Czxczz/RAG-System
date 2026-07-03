@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 
 from app.core.vector_store import SearchHit
 
-_CITATION_RE = re.compile(r"\[(\d+)\]")
 _STOPWORDS = {
     "a", "an", "the", "and", "or", "to", "of", "in", "on", "for", "is", "are",
     "was", "were", "be", "with", "at", "by", "from", "that", "this", "it", "you",
@@ -30,6 +29,10 @@ DISCLAIMER = (
 )
 
 
+# Matches [1], [2, 4], [1, 2, 3] — Gemini often emits grouped markers.
+_CITATION_GROUP_RE = re.compile(r"\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]")
+
+
 @dataclass
 class ValidationResult:
     passed: bool
@@ -38,12 +41,17 @@ class ValidationResult:
     notes: list[str] = field(default_factory=list)
 
 
-def _claim_before_marker(answer: str, marker: int) -> str:
-    pattern = re.compile(rf"(.+?)\[{marker}\]", re.IGNORECASE | re.DOTALL)
-    match = pattern.search(answer)
-    if not match:
-        return ""
-    return match.group(1).split("\n")[-1]
+def _citation_groups(answer: str) -> list[tuple[str, list[int]]]:
+    """Return (claim line, markers) for each inline citation group."""
+    pattern = re.compile(
+        r"(.+?)\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]", re.IGNORECASE | re.DOTALL
+    )
+    groups: list[tuple[str, list[int]]] = []
+    for match in pattern.finditer(answer):
+        claim = match.group(1).split("\n")[-1]
+        markers = [int(part.strip()) for part in match.group(2).split(",")]
+        groups.append((claim, markers))
+    return groups
 
 
 def _claim_tokens(claim: str) -> set[str]:
@@ -65,8 +73,8 @@ def validate_answer(
     Returns a :class:`ValidationResult`. An answer with no citation markers and
     no hits is treated as trivially valid (e.g. a refusal handled upstream).
     """
-    markers = [int(m) for m in _CITATION_RE.findall(answer)]
-    if not markers:
+    groups = _citation_groups(answer)
+    if not groups:
         # No citations to verify. Only flag when the answer makes claims but
         # cites nothing despite context being available.
         if hits and len(answer.split()) > 12:
@@ -79,20 +87,27 @@ def validate_answer(
 
     invalid_markers: list[int] = []
     supported = 0
-    for marker in markers:
-        if marker < 1 or marker > len(hits):
-            invalid_markers.append(marker)
+    for claim, markers in groups:
+        out_of_range = [m for m in markers if m < 1 or m > len(hits)]
+        invalid_markers.extend(out_of_range)
+        valid = [m for m in markers if 1 <= m <= len(hits)]
+        if not valid:
             continue
-        chunk_text = hits[marker - 1].chunk.text.lower()
-        tokens = _claim_tokens(_claim_before_marker(answer, marker))
+        tokens = _claim_tokens(claim)
         if not tokens:
             supported += 1
             continue
-        overlap = sum(1 for token in tokens if token in chunk_text)
-        if overlap / len(tokens) >= 0.25:
+        backed = False
+        for marker in valid:
+            chunk_text = hits[marker - 1].chunk.text.lower()
+            overlap = sum(1 for token in tokens if token in chunk_text)
+            if overlap / len(tokens) >= 0.25:
+                backed = True
+                break
+        if backed:
             supported += 1
 
-    support = supported / len(markers)
+    support = supported / len(groups)
     notes: list[str] = []
     if invalid_markers:
         notes.append(

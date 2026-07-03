@@ -51,6 +51,13 @@ class ChatRequest(BaseModel):
             "a new thread; reuse the id returned in the response to continue."
         ),
     )
+    document_ids: Optional[list[str]] = Field(
+        default=None,
+        description=(
+            "Optional list of document ids to search. Omit or null to search all "
+            "uploaded documents."
+        ),
+    )
 
 
 class ChatTurnModel(BaseModel):
@@ -72,6 +79,10 @@ class Citation(BaseModel):
     chunk_id: str
     score: float
     snippet: str
+    chunk_text: str = Field(
+        ...,
+        description="Full retrieved chunk text (snippet is a short preview).",
+    )
 
 
 class ChatResponse(BaseModel):

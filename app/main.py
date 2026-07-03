@@ -3,18 +3,23 @@
 Run locally:
     uvicorn app.main:app --reload
 
-Then open http://localhost:8000/docs for interactive API docs.
+Then open http://localhost:8000/ for the Web UI (or /docs for API docs).
 """
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.api.routes import router
 from app.dependencies import get_orchestrator
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 @asynccontextmanager
@@ -45,8 +50,17 @@ app.add_middleware(
 
 app.include_router(router)
 
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-@app.get("/", tags=["system"])
+
+@app.get("/", tags=["system"], include_in_schema=False)
+def ui() -> FileResponse:
+    """Serve the Web UI."""
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/api", tags=["system"])
 def root() -> dict:
     return {
         "name": "PrivateRAG AI Assistant",

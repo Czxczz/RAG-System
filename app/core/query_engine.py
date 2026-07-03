@@ -21,6 +21,7 @@ from app.core.diversity import dedupe_by_text, mmr_rerank
 from app.core.embeddings import EmbeddingService
 from app.core.query_rewriter import QueryRewriter
 from app.core.reranker import Reranker
+from app.core.spec_retrieval import promote_spec_hits
 from app.core.vector_store import SearchHit, VectorStore
 
 
@@ -39,7 +40,13 @@ class QueryEngine:
         self.reranker = reranker
         self.rewriter = rewriter
 
-    def retrieve(self, query: str, top_k: int, min_score: float) -> list[SearchHit]:
+    def retrieve(
+        self,
+        query: str,
+        top_k: int,
+        min_score: float,
+        document_ids: set[str] | None = None,
+    ) -> list[SearchHit]:
         variants = self._expand(query)
 
         # A wider pool is needed when a second-stage selector (rerank or MMR)
@@ -47,12 +54,17 @@ class QueryEngine:
         needs_pool = self.settings.rerank_enabled or self.settings.mmr_enabled
         pool_k = max(self.settings.retrieve_k if needs_pool else top_k, top_k)
 
-        hits = self._multi_query_search(variants, pool_k=pool_k, min_score=min_score)
+        hits = self._multi_query_search(
+            variants, pool_k=pool_k, min_score=min_score, document_ids=document_ids
+        )
         if not hits:
             return []
 
         if self.settings.rerank_enabled and self.reranker:
             hits = self._rerank_over_variants(variants, hits)
+
+        # Keep the full post-rerank pool; MMR/top_k trimming can drop spec tables.
+        rerank_pool = hits
 
         if self.settings.mmr_enabled and len(hits) > 1:
             vectors = self.store.vectors_for([h.chunk.id for h in hits])
@@ -69,6 +81,7 @@ class QueryEngine:
                 hits, jaccard_threshold=self.settings.text_dedupe_jaccard
             )
 
+        hits = promote_spec_hits(query, rerank_pool, top_k)
         return hits[:top_k]
 
     # ── Stages ───────────────────────────────────────────────
@@ -78,13 +91,19 @@ class QueryEngine:
         return self.rewriter.rewrite(query)
 
     def _multi_query_search(
-        self, variants: list[str], pool_k: int, min_score: float
+        self,
+        variants: list[str],
+        pool_k: int,
+        min_score: float,
+        document_ids: set[str] | None = None,
     ) -> list[SearchHit]:
         """Search each variant and fuse pools, keeping each chunk's best score."""
         query_vecs = self.embeddings.embed_queries(variants)
         fused: dict[str, SearchHit] = {}
         for vec in query_vecs:
-            for hit in self.store.search(vec, top_k=pool_k):
+            for hit in self.store.search(
+                vec, top_k=pool_k, document_ids=document_ids
+            ):
                 existing = fused.get(hit.chunk.id)
                 if existing is None or hit.score > existing.score:
                     fused[hit.chunk.id] = hit

@@ -19,6 +19,10 @@ class EvalCase(BaseModel):
     forbidden_answer_keywords: list[str] = Field(default_factory=list)
     # True when the system should refuse (topic not in corpus).
     should_refuse: bool = False
+    # Restrict retrieval to these ingested filenames (omit = search all docs).
+    document_filenames: list[str] = Field(default_factory=list)
+    # At least one retrieved chunk should come from one of these filenames.
+    expected_source_filenames: list[str] = Field(default_factory=list)
     top_k: Optional[int] = Field(default=None, ge=1, le=20)
     mode: Literal["auto", "openai", "gemini", "ollama", "extractive"] = "auto"
 
@@ -37,6 +41,7 @@ class CaseMetrics(BaseModel):
     refused_correctly: bool
     retrieved_relevant: int
     retrieved_total: int
+    source_accuracy: float = 1.0
     # Max pairwise cosine among the final retrieved chunks (0 == none/single,
     # 1.0 == an exact duplicate). Lower is better.
     redundancy: float = 0.0
@@ -64,5 +69,6 @@ class EvalReport(BaseModel):
     citation_accuracy: float
     answer_keyword_recall: float
     refusal_accuracy: float
+    source_accuracy: float = 1.0
     redundancy: float = 0.0
     cases: list[CaseResult]

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrivateRAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">◈</span>
+        <div>
+          <h1>PrivateRAG</h1>
+          <p class="brand-sub">Grounded document Q&amp;A</p>
+        </div>
+      </div>
+
+      <div id="health-pill" class="health-pill" aria-live="polite">Checking…</div>
+
+      <section class="panel">
+        <h2>Documents</h2>
+        <p class="panel-hint">Uncheck to limit chat to specific documents.</p>
+        <label class="upload-zone" id="upload-zone">
+          <input type="file" id="file-input" accept=".pdf,.txt,.md,.markdown" hidden />
+          <span>Drop a file or click to upload</span>
+          <small>PDF, TXT, Markdown</small>
+        </label>
+        <ul id="doc-list" class="doc-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Settings</h2>
+        <label class="field">
+          <span>LLM mode</span>
+          <select id="mode-select">
+            <option value="auto">auto</option>
+            <option value="ollama">ollama (local)</option>
+            <option value="gemini">gemini</option>
+            <option value="openai">openai</option>
+            <option value="extractive">extractive</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Engine</span>
+          <select id="engine-select">
+            <option value="custom">custom</option>
+            <option value="langchain">langchain</option>
+            <option value="langgraph">langgraph</option>
+          </select>
+          <small id="engine-hint" class="field-hint hidden">
+            Streaming is on — only LangChain is used. Turn off streaming to pick custom or langgraph.
+          </small>
+        </label>
+        <label class="field checkbox">
+          <input type="checkbox" id="stream-toggle" checked />
+          <span>Stream responses</span>
+        </label>
+        <label class="field">
+          <span>top_k</span>
+          <input type="number" id="top-k-input" min="1" max="20" value="3" />
+        </label>
+        <button type="button" id="new-chat-btn" class="btn btn-ghost">New conversation</button>
+      </section>
+    </aside>
+
+    <main class="chat-area">
+      <div id="messages" class="messages" role="log" aria-live="polite"></div>
+      <form id="chat-form" class="composer">
+        <textarea
+          id="query-input"
+          rows="2"
+          placeholder="Ask a question about your documents…"
+          required
+        ></textarea>
+        <button type="submit" id="send-btn" class="btn btn-primary">Send</button>
+      </form>
+    </main>
+
+    <aside class="citations-panel">
+      <h2>Sources</h2>
+      <p id="citations-empty" class="muted">Citations appear here after you ask a question.</p>
+      <div id="citations-list"></div>
+      <div id="meta-panel" class="meta-panel hidden">
+        <div><strong>Provider</strong> <span id="meta-provider">—</span></div>
+        <div><strong>Grounded</strong> <span id="meta-grounded">—</span></div>
+        <ul id="meta-notes" class="meta-notes"></ul>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/static/js/app.js" defer></script>
+</body>
+</html>

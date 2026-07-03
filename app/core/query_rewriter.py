@@ -57,11 +57,46 @@ _TAXONOMY_VARIANT = (
     "memory optimized storage optimized accelerated computing"
 )
 
+_MEMORY_FAMILY_QUERY = re.compile(
+    r"\bmemory[- ]?(?:intensive|optimized)\b|\b(?:large|high)\s+(?:memory|ram)\b",
+    re.IGNORECASE,
+)
+_MEMORY_FAMILY_VARIANT = (
+    "memory optimized designed deliver fast performance workloads "
+    "process large data sets in memory"
+)
+
+_INSTANCE_SPEC_QUERY = re.compile(
+    r"\b(vcpu|vcpus|memory|gi[b]|ram|bandwidth|network|storage|iops|"
+    r"processor|cores?|threads?)\b",
+    re.IGNORECASE,
+)
+_INSTANCE_TYPE_IN_QUERY = re.compile(
+    r"\b[a-z]\d+[a-z]?\.[a-z][a-z0-9]*\b", re.IGNORECASE
+)
+
 
 def _taxonomy_variant(query: str) -> str | None:
     if _TAXONOMY_QUERY.search(query):
         return _TAXONOMY_VARIANT
     return None
+
+
+def _memory_family_variant(query: str) -> str | None:
+    if _MEMORY_FAMILY_QUERY.search(query):
+        return _MEMORY_FAMILY_VARIANT
+    return None
+
+
+def _instance_spec_variant(query: str) -> str | None:
+    if not _INSTANCE_TYPE_IN_QUERY.search(query):
+        return None
+    if not _INSTANCE_SPEC_QUERY.search(query):
+        return None
+    types = _INSTANCE_TYPE_IN_QUERY.findall(query)
+    if not types:
+        return None
+    return f"{types[0]} performance specifications vCPUs memory processor"
 
 
 def _dedupe_preserve_order(items: list[str]) -> list[str]:
@@ -102,9 +137,18 @@ class QueryRewriter:
         if taxonomy:
             variants.insert(0, taxonomy)
 
-        # Allow one extra slot when a taxonomy variant is injected so it is not
-        # truncated by the usual variant budget.
-        limit = n + 1 + (1 if taxonomy else 0)
+        memory_family = _memory_family_variant(query)
+        if memory_family:
+            variants.insert(0, memory_family)
+
+        instance_spec = _instance_spec_variant(query)
+        if instance_spec:
+            variants.insert(0, instance_spec)
+
+        # Allow extra slots when deterministic variants are injected so they are
+        # not truncated by the usual variant budget.
+        extra = sum(1 for v in (taxonomy, memory_family, instance_spec) if v)
+        limit = n + 1 + extra
         return _dedupe_preserve_order([query, *variants])[:limit]
 
     # ── Strategies ───────────────────────────────────────────

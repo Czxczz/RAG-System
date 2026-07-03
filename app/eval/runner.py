@@ -5,6 +5,7 @@ import sys
 import time
 from collections.abc import Callable
 
+from app.eval.corpus import resolve_document_ids
 from app.core.orchestrator import RAGOrchestrator
 from app.eval.metrics import redundancy, score_case
 from app.eval.schemas import CaseResult, EvalCase, EvalDataset, EvalReport
@@ -47,6 +48,7 @@ def build_report(
         )
         if refusal_ids
         else 1.0,
+        source_accuracy=_aggregate([c.metrics.source_accuracy for c in cases]),
         redundancy=_aggregate([c.metrics.redundancy for c in cases]),
         cases=cases,
     )
@@ -58,8 +60,14 @@ class EvalRunner:
 
     def run_case(self, case: EvalCase, default_top_k: int) -> CaseResult:
         top_k = case.top_k or default_top_k
+        document_ids = resolve_document_ids(self.orch.registry, case.document_filenames)
         t0 = time.monotonic()
-        result = self.orch.answer(query=case.query, mode=case.mode, top_k=top_k)
+        result = self.orch.answer(
+            query=case.query,
+            mode=case.mode,
+            top_k=top_k,
+            document_ids=document_ids,
+        )
         elapsed = time.monotonic() - t0
         vectors = self.orch.store.vectors_for([h.chunk.id for h in result.hits])
         redundancy_score = redundancy(result.hits, vectors)
@@ -74,6 +82,8 @@ class EvalRunner:
             notes.append("Not all expected retrieval keywords found in top-k.")
         if metrics.hallucination:
             notes.append("Hallucination heuristic triggered.")
+        if case.expected_source_filenames and metrics.source_accuracy < 1.0:
+            notes.append("Expected source document not found in top-k.")
 
         return CaseResult(
             case_id=case.id,

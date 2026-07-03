@@ -8,6 +8,7 @@ from app.eval.metrics import (
     is_hallucination,
     precision_at_k,
     recall_at_k,
+    source_accuracy,
 )
 from app.eval.schemas import EvalCase
 
@@ -108,3 +109,36 @@ def test_invented_number_still_flagged():
     hits = [_hit("annual leave policy details without numbers", 0)]
     answer = "Employees receive 99 days of leave [1]."
     assert is_hallucination(answer, hits, case) is True
+
+
+def test_source_accuracy_requires_expected_filename():
+    case = EvalCase(
+        id="types",
+        query="How many vCPUs does m5.xlarge have?",
+        relevant_keywords=["m5.xlarge", "vCPU"],
+        expected_source_filenames=["ec2-instance-types.pdf"],
+    )
+    wrong_doc = SearchHit(
+        chunk=StoredChunk(
+            id="ug:0",
+            document_id="ug",
+            filename="ec2-ug.pdf",
+            chunk_index=0,
+            page=1,
+            text="general EC2 overview",
+        ),
+        score=0.8,
+    )
+    right_doc = SearchHit(
+        chunk=StoredChunk(
+            id="types:0",
+            document_id="types",
+            filename="ec2-instance-types.pdf",
+            chunk_index=0,
+            page=1,
+            text="m5.xlarge provides 4 vCPU",
+        ),
+        score=0.7,
+    )
+    assert source_accuracy([wrong_doc], case) == 0.0
+    assert source_accuracy([right_doc], case) == 1.0

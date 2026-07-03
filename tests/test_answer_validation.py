@@ -70,6 +70,32 @@ def test_short_answer_without_citation_is_lenient():
     assert result.passed is True
 
 
+def test_grouped_citation_markers_pass():
+    hits = [
+        _hit("General purpose instances balance compute memory networking.", 0),
+        _hit("General purpose instances are ideal for web servers.", 1),
+    ]
+    answer = (
+        "General purpose instances balance compute and memory [1, 2]."
+    )
+    result = validate_answer(answer, hits, min_support=0.5)
+    assert result.passed is True
+    assert result.support == 1.0
+
+
+def test_grouped_citation_markers_eval_metric():
+    from app.eval.metrics import citation_accuracy
+
+    hits = [
+        _hit("t2.micro is free tier eligible for new accounts.", 0),
+        _hit("Free tier eligible instance types include t2.micro.", 1),
+    ]
+    answer = (
+        "Yes, t2.micro is free tier eligible for new accounts [1, 2]."
+    )
+    assert citation_accuracy(answer, hits) == 1.0
+
+
 # ── Retrieval confidence gate ────────────────────────────────
 def _gate(hits, *, enabled=True, min_score=0.0) -> bool:
     fake = SimpleNamespace(

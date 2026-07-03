@@ -149,6 +149,7 @@ class RAGOrchestrator:
         mode: str,
         top_k: int | None = None,
         conversation_id: str | None = None,
+        document_ids: list[str] | None = None,
     ) -> AnswerResult:
         conv_id, _ = self.conversation_store.get_or_create(conversation_id)
         history = (
@@ -160,9 +161,13 @@ class RAGOrchestrator:
         )
 
         k = top_k or self.settings.top_k
+        scope = self.normalize_document_scope(document_ids)
         retrieval_query = contextualize_query(query, history, self.settings, self.llm)
         hits = self.query_engine.retrieve(
-            retrieval_query, top_k=k, min_score=self.settings.min_score
+            retrieval_query,
+            top_k=k,
+            min_score=self.settings.min_score,
+            document_ids=scope,
         )
 
         if not hits or self._retrieval_below_gate(hits):
@@ -193,6 +198,19 @@ class RAGOrchestrator:
         result.conversation_id = conv_id
         self._remember_exchange(conv_id, query, result.answer)
         return result
+
+    def normalize_document_scope(
+        self, document_ids: list[str] | None
+    ) -> set[str] | None:
+        """Return a document-id set for scoped retrieval, or None for all docs."""
+        if not document_ids:
+            return None
+        known = {r.id for r in self.registry.list()}
+        invalid = set(document_ids) - known
+        if invalid:
+            missing = ", ".join(sorted(invalid))
+            raise ValueError(f"Unknown document_ids: {missing}")
+        return set(document_ids)
 
     def _retrieval_below_gate(self, hits: list[SearchHit]) -> bool:
         if not self.settings.retrieval_gate_enabled:

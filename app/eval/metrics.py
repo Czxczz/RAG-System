@@ -65,29 +65,38 @@ def answer_keyword_recall(answer: str, case: EvalCase) -> float:
 
 
 def _extract_citation_markers(answer: str) -> list[int]:
-    return [int(match) for match in _CITATION_RE.findall(answer)]
+    markers: list[int] = []
+    for group in _CITATION_GROUP_RE.findall(answer):
+        markers.extend(int(part.strip()) for part in group.split(","))
+    return markers
+
+
+def _citation_groups(answer: str) -> list[tuple[str, list[int]]]:
+    pattern = re.compile(
+        r"(.+?)\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]", re.IGNORECASE | re.DOTALL
+    )
+    groups: list[tuple[str, list[int]]] = []
+    for match in pattern.finditer(answer):
+        claim = match.group(1).split("\n")[-1]
+        markers = [int(part.strip()) for part in match.group(2).split(",")]
+        groups.append((claim, markers))
+    return groups
 
 
 def citation_accuracy(answer: str, hits: list[SearchHit]) -> float:
-    """Fraction of citation markers that are valid and overlap the cited chunk."""
+    """Fraction of citation groups that are valid and overlap a cited chunk."""
     if _is_refusal(answer) or not hits:
         return 1.0
 
-    markers = _extract_citation_markers(answer)
-    if not markers:
+    groups = _citation_groups(answer)
+    if not groups:
         return 0.0
 
     supported = 0
-    for marker in markers:
-        if marker < 1 or marker > len(hits):
+    for claim, markers in groups:
+        valid = [m for m in markers if 1 <= m <= len(hits)]
+        if not valid:
             continue
-        chunk_text = hits[marker - 1].chunk.text.lower()
-        # Claim text immediately before [marker] in the same sentence/line.
-        pattern = re.compile(rf"(.+?)\[{marker}\]", re.IGNORECASE | re.DOTALL)
-        match = pattern.search(answer)
-        if not match:
-            continue
-        claim = match.group(1).split("\n")[-1]
         tokens = {
             word.lower()
             for word in re.findall(r"[A-Za-z0-9]+", claim)
@@ -96,11 +105,17 @@ def citation_accuracy(answer: str, hits: list[SearchHit]) -> float:
         if not tokens:
             supported += 1
             continue
-        overlap = sum(1 for token in tokens if token in chunk_text)
-        if overlap / len(tokens) >= 0.25:
+        backed = False
+        for marker in valid:
+            chunk_text = hits[marker - 1].chunk.text.lower()
+            overlap = sum(1 for token in tokens if token in chunk_text)
+            if overlap / len(tokens) >= 0.25:
+                backed = True
+                break
+        if backed:
             supported += 1
 
-    return supported / len(markers)
+    return supported / len(groups)
 
 
 def _strip_citations(text: str) -> str:
@@ -175,6 +190,20 @@ def redundancy(hits: list[SearchHit], vectors_by_id: dict) -> float:
     return float(sim.max())
 
 
+def source_accuracy(hits: list[SearchHit], case: EvalCase) -> float:
+    """Fraction of cases where an expected source filename appears in top-k."""
+    if not case.expected_source_filenames:
+        return 1.0
+    if not hits:
+        return 0.0
+    filenames = {hit.chunk.filename for hit in hits}
+    return (
+        1.0
+        if any(name in filenames for name in case.expected_source_filenames)
+        else 0.0
+    )
+
+
 def score_case(
     case: EvalCase,
     answer: str,
@@ -195,5 +224,6 @@ def score_case(
         refused_correctly=refused if case.should_refuse else not refused,
         retrieved_relevant=retrieved_relevant,
         retrieved_total=len(hits),
+        source_accuracy=source_accuracy(hits, case),
         redundancy=redundancy_score,
     )
