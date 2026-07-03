@@ -6,7 +6,7 @@
   "precision_at_k": 0.6470588235294118,
   "recall_at_k": 0.6647058823529411,
   "hallucination_rate": 0.11764705882352941,
-  "citation_accuracy": 0.8823529411764706,
+  "citation_accuracy": 1.0,
   "answer_keyword_recall": 1.0,
   "refusal_accuracy": 1.0,
   "source_accuracy": 1.0,
@@ -170,14 +170,14 @@
     {
       "case_id": "types-general-purpose",
       "query": "What is a general purpose EC2 instance family?",
-      "answer": "General purpose instances provide a balance of compute, memory, and networking resources [1, 2]. They are ideal for applications that use these resources in equal proportions, such as web servers and code repositories [1, 2].\n\n_Note: parts of this answer may not be fully supported by the cited sources; please verify against the referenced passages._",
+      "answer": "General purpose instances provide a balance of compute, memory, and networking resources [1, 2]. They are ideal for applications that use these resources in equal proportions, such as web servers and code repositories [1, 2].",
       "provider": "gemini",
-      "grounded": false,
+      "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
         "recall_at_k": 1.0,
         "hallucination": false,
-        "citation_accuracy": 0.0,
+        "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
         "retrieved_relevant": 3,
@@ -186,7 +186,7 @@
         "redundancy": 0.8781766891479492
       },
       "notes": [],
-      "elapsed_seconds": 6.1
+      "elapsed_seconds": 5.4
     },
     {
       "case_id": "types-compute-optimized",
@@ -256,14 +256,14 @@
     {
       "case_id": "mixed-free-tier-micro",
       "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
-      "answer": "Yes, the t2.micro instance type can be used under the Free Tier if your AWS account was created before July 15, 2025, and is less than 12 months old [1, 2, 3]. Instance types eligible for the Free Tier are labeled \"Free tier eligible\" [1, 2, 3].\n\n_Note: parts of this answer may not be fully supported by the cited sources; please verify against the referenced passages._",
+      "answer": "Yes, the t2.micro instance type can be used under the Free Tier if your AWS account was created before July 15, 2025, and is less than 12 months old [1, 2, 3]. Instance types eligible for the Free Tier are labeled as \"Free tier eligible\" [1, 2, 3].",
       "provider": "gemini",
-      "grounded": false,
+      "grounded": true,
       "metrics": {
         "precision_at_k": 1.0,
         "recall_at_k": 1.0,
         "hallucination": false,
-        "citation_accuracy": 0.0,
+        "citation_accuracy": 1.0,
         "answer_keyword_recall": 1.0,
         "refused_correctly": true,
         "retrieved_relevant": 3,
@@ -272,7 +272,7 @@
         "redundancy": 0.9896889925003052
       },
       "notes": [],
-      "elapsed_seconds": 5.9
+      "elapsed_seconds": 5.6
     },
     {
       "case_id": "scoped-refuse-imdsv2-types-only",
@@ -314,7 +314,7 @@
         "redundancy": 0.7366849184036255
       },
       "notes": [],
-      "elapsed_seconds": 10.2
+      "elapsed_seconds": 9.5
     },
     {
       "case_id": "scoped-refuse-placement-types-only",
