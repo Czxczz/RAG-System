@@ -59,6 +59,22 @@ def test_rewriter_adds_taxonomy_variant_for_instance_type_categories():
     assert any("general purpose" in v.lower() and "compute optimized" in v.lower() for v in variants)
 
 
+def test_rewriter_adds_instance_spec_variant():
+    settings = Settings(query_rewrite_use_llm=False, query_rewrite_num_variants=3)
+    rw = QueryRewriter(settings, _NoLLM())
+    variants = rw.rewrite("How many vCPUs does the m5.xlarge instance type provide?")
+    assert any("m5.xlarge" in v and "performance specifications" in v for v in variants)
+
+
+def test_rewriter_adds_memory_family_variant():
+    settings = Settings(query_rewrite_use_llm=False, query_rewrite_num_variants=3)
+    rw = QueryRewriter(settings, _NoLLM())
+    variants = rw.rewrite(
+        "Which EC2 instance family is designed for memory-intensive workloads?"
+    )
+    assert any("memory optimized" in v.lower() and "large data sets" in v.lower() for v in variants)
+
+
 # ── MMR diversity ────────────────────────────────────────────
 def test_mmr_order_prefers_diverse_second_pick():
     # Items 0 and 1 are near-identical; item 2 is distinct but less relevant.

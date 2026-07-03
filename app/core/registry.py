@@ -59,6 +59,11 @@ class DocumentRegistry:
     def list(self) -> list[DocumentRecord]:
         return sorted(self._records.values(), key=lambda r: r.uploaded_at, reverse=True)
 
+    def ids_for_filenames(self, filenames: list[str]) -> dict[str, str]:
+        """Map canonical filename -> document id for all ingested matches."""
+        wanted = set(filenames)
+        return {r.filename: r.id for r in self._records.values() if r.filename in wanted}
+
     @property
     def count(self) -> int:
         return len(self._records)

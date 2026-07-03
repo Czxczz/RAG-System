@@ -37,6 +37,7 @@ def _to_citations(hits) -> list[Citation]:
             chunk_id=hit.chunk.id,
             score=round(hit.score, 4),
             snippet=hit.chunk.text[:280] + ("…" if len(hit.chunk.text) > 280 else ""),
+            chunk_text=hit.chunk.text,
         )
         for i, hit in enumerate(hits, start=1)
     ]
@@ -62,6 +63,19 @@ def _to_info(record) -> DocumentInfo:
         num_chars=record.num_chars,
         uploaded_at=record.uploaded_at,
     )
+
+
+def _chat_kwargs(request: ChatRequest, orch: RAGOrchestrator) -> dict:
+    document_ids = request.document_ids
+    if document_ids:
+        orch.normalize_document_scope(document_ids)
+    return {
+        "query": request.query,
+        "mode": request.mode,
+        "top_k": request.top_k,
+        "conversation_id": request.conversation_id,
+        "document_ids": document_ids,
+    }
 
 
 @router.get("/health", response_model=HealthResponse, tags=["system"])
@@ -130,31 +144,20 @@ def delete_document(
 def chat(
     request: ChatRequest, orch: RAGOrchestrator = Depends(get_orchestrator)
 ) -> ChatResponse:
-    if request.engine == "langchain":
-        from app.dependencies import get_langchain_rag
+    try:
+        kwargs = _chat_kwargs(request, orch)
+        if request.engine == "langchain":
+            from app.dependencies import get_langchain_rag
 
-        result = get_langchain_rag().answer(
-            query=request.query,
-            mode=request.mode,
-            top_k=request.top_k,
-            conversation_id=request.conversation_id,
-        )
-    elif request.engine == "langgraph":
-        from app.dependencies import get_langgraph_rag
+            result = get_langchain_rag().answer(**kwargs)
+        elif request.engine == "langgraph":
+            from app.dependencies import get_langgraph_rag
 
-        result = get_langgraph_rag().answer(
-            query=request.query,
-            mode=request.mode,
-            top_k=request.top_k,
-            conversation_id=request.conversation_id,
-        )
-    else:
-        result = orch.answer(
-            query=request.query,
-            mode=request.mode,
-            top_k=request.top_k,
-            conversation_id=request.conversation_id,
-        )
+            result = get_langgraph_rag().answer(**kwargs)
+        else:
+            result = orch.answer(**kwargs)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _to_chat_response(result)
 
 
@@ -183,7 +186,9 @@ def delete_conversation(conversation_id: str) -> dict:
 
 
 @router.post("/chat/stream", tags=["chat"])
-def chat_stream(request: ChatRequest) -> StreamingResponse:
+def chat_stream(
+    request: ChatRequest, orch: RAGOrchestrator = Depends(get_orchestrator)
+) -> StreamingResponse:
     """Stream a grounded answer as Server-Sent Events (LangChain engine).
 
     Emits ``data: {...}`` lines with ``type`` of ``citations`` (sources, sent
@@ -196,14 +201,18 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
 
     rag = get_langchain_rag()
 
+    try:
+        kwargs = _chat_kwargs(request, orch)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     def event_stream():
-        for event in rag.stream(
-            query=request.query,
-            mode=request.mode,
-            top_k=request.top_k,
-            conversation_id=request.conversation_id,
-        ):
-            yield f"data: {json.dumps(event)}\n\n"
+        try:
+            for event in rag.stream(**kwargs):
+                yield f"data: {json.dumps(event)}\n\n"
+        except ValueError as exc:
+            payload = {"type": "error", "message": str(exc)}
+            yield f"data: {json.dumps(payload)}\n\n"
 
     return StreamingResponse(
         event_stream(),

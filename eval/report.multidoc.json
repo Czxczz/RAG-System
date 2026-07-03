@@ -1,0 +1,383 @@
+{
+  "dataset": "ec2-multidoc",
+  "mode": "gemini",
+  "top_k": 3,
+  "num_cases": 17,
+  "precision_at_k": 0.6470588235294118,
+  "recall_at_k": 0.6647058823529411,
+  "hallucination_rate": 0.11764705882352941,
+  "citation_accuracy": 1.0,
+  "answer_keyword_recall": 1.0,
+  "refusal_accuracy": 1.0,
+  "source_accuracy": 1.0,
+  "redundancy": 0.7975361943244934,
+  "cases": [
+    {
+      "case_id": "ug-imdsv2",
+      "query": "How do I require the use of IMDSv2 on my EC2 instances?",
+      "answer": "To require the use of IMDSv2 on your EC2 instances, you can follow these steps:\n\nFor an existing instance using the Amazon EC2 console:\n1. Open the Amazon EC2 console [2].\n2. In the navigation pane, choose **Instances** [2].\n3. Select your instance [2].\n4. Choose **Actions**, then **Instance settings**, and then **Modify instance metadata options** [2].\n5. In the dialog box, for **Instance metadata service**, select **Enable** [2].\n6. For **IMDSv2**, choose **Required** [2].\n7. Choose **Save** [2].\n\nYou can also configure IMDSv2 using the AWS CLI [2].\n\nAdditionally, a policy can be specified to require IMDSv2 when calling the `RunInstances` API, indicated by `\"ec2:MetadataHttpTokens\": \"required\"`. If IMDSv2 is not specified as required in this context, an `UnauthorizedOperation` error will occur [3].\n\nTo use IMDSv2, your EC2 instances must use a supported AWS SDK version, and it is recommended to stay updated with SDK releases [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8488125801086426
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 6.6
+    },
+    {
+      "case_id": "ug-placement-strategies",
+      "query": "What placement group strategies does EC2 support?",
+      "answer": "EC2 supports the following placement strategies for placement groups: Cluster, Partition, and Spread [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.846706748008728
+      },
+      "notes": [],
+      "elapsed_seconds": 4.3
+    },
+    {
+      "case_id": "ug-elastic-ip",
+      "query": "What is an Elastic IP address?",
+      "answer": "An Elastic IP address is for use in a specific Region only and cannot be moved to a different Region [2]. It comes from Amazon's pool of IPv4 addresses, or from a custom IPv4 address pool brought to an AWS account [2]. Elastic IP addresses are not supported for IPv6 [2]. They are for use in a specific network border group only [3]. To use an Elastic IP address, one must first allocate it to an account and then associate it with an instance or a network interface [2]. When associated with an instance, it is also associated with the instance's primary network interface [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.3333333333333333,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8193739652633667
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 6.6
+    },
+    {
+      "case_id": "ug-spot-interruption",
+      "query": "What happens when a Spot Instance is interrupted?",
+      "answer": "When Amazon EC2 reclaims a Spot Instance, this event is called a Spot Instance interruption [1]. This can occur for several reasons: Amazon EC2 may need to reclaim the instance to repurpose capacity, for host maintenance, or for hardware decommission [1]. Another reason is if the Spot price exceeds the maximum price specified in your Spot request [1].\n\nWhen an interruption is initiated, Amazon EC2 provides a two-minute notification before the instance is interrupted [2].\n\nRegarding charges:\n*   If Amazon EC2 interrupts a Windows or Linux (excluding SUSE) instance, there is no charge if it's interrupted in the first hour, and you are charged for the seconds used if it's interrupted after the first hour [3].\n*   If Amazon EC2 interrupts a SUSE instance, there is no charge if it's interrupted in the first hour. If interrupted after the first hour, you are charged for the full hours used, but not for the interrupted partial hour [3].\n*   While an interrupted Spot Instance is stopped, you are only charged for the preserved EBS volumes [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.8,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8217756748199463
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 7.0
+    },
+    {
+      "case_id": "ug-key-pair",
+      "query": "How do I create a key pair for my EC2 instance?",
+      "answer": "You can create key pairs for your Amazon EC2 instance using Amazon EC2 itself, or by using a third-party tool and then importing them to Amazon EC2 [1]. Amazon EC2 supports 2048-bit SSH-2 RSA keys for Linux and Windows instances, and ED25519 keys for Linux instances [1].\n\nTo import a public key to Amazon EC2:\n1. Open the Amazon EC2 console at https://console.aws.amazon.com/ec2/ [2].\n2. In the navigation pane, choose Key Pairs [2].\n3. Choose Import key pair [2].\n4. For Name, enter a descriptive name for the public key, which can include up to 255 ASCII characters but no leading or trailing spaces [2].\n5. Either choose Browse to navigate to and select your public key, or paste the contents of your public key into the Public key contents field [2].\n6. Choose Import key pair [2].\n7. Verify that the public key you imported appears in the list of key pairs [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8426330089569092
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 12.0
+    },
+    {
+      "case_id": "types-m5xlarge-vcpu",
+      "query": "How many vCPUs does the m5.xlarge instance type provide?",
+      "answer": "The m5.xlarge instance type provides 4 vCPUs [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.3333333333333333,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 1,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8749368190765381
+      },
+      "notes": [],
+      "elapsed_seconds": 12.6
+    },
+    {
+      "case_id": "types-memory-optimized",
+      "query": "Which EC2 instance family is designed for memory-intensive workloads?",
+      "answer": "Memory optimized instances are designed to deliver fast performance for workloads that process large data sets in memory [1, 2]. For workloads requiring a high-memory instance, the U7i instance type is recommended [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.852577805519104
+      },
+      "notes": [],
+      "elapsed_seconds": 11.4
+    },
+    {
+      "case_id": "types-general-purpose",
+      "query": "What is a general purpose EC2 instance family?",
+      "answer": "General purpose instances provide a balance of compute, memory, and networking resources [1, 2]. They are ideal for applications that use these resources in equal proportions, such as web servers and code repositories [1, 2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8781766891479492
+      },
+      "notes": [],
+      "elapsed_seconds": 5.4
+    },
+    {
+      "case_id": "types-compute-optimized",
+      "query": "Which instance family is optimized for compute-intensive workloads?",
+      "answer": "Compute optimized instances are designed for compute-intensive applications [1]. These instances are ideal for batch processing workloads, media transcoding, high performance web servers, high performance computing (HPC), scientific modeling, dedicated gaming servers, ad server engines, and machine learning inference [1]. They are also ideal for batch processing workloads [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6666666666666666,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 2,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.7505513429641724
+      },
+      "notes": [],
+      "elapsed_seconds": 6.4
+    },
+    {
+      "case_id": "types-storage-optimized",
+      "query": "What are storage optimized EC2 instance types used for?",
+      "answer": "Storage optimized instances are designed for workloads that require high, sequential read and write access to very large data sets on local storage [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8051161766052246
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 8.9
+    },
+    {
+      "case_id": "mixed-instance-categories",
+      "query": "What categories of instance types does EC2 offer?",
+      "answer": "Amazon EC2 groups instance types into categories such as General purpose [1], [3], Storage optimized [3], Compute optimized [3], Memory optimized [3], and Accelerated computing [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6666666666666666,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 2,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8342903256416321
+      },
+      "notes": [],
+      "elapsed_seconds": 9.4
+    },
+    {
+      "case_id": "mixed-free-tier-micro",
+      "query": "Is the t2.micro instance eligible for the AWS Free Tier?",
+      "answer": "Yes, the t2.micro instance type can be used under the Free Tier if your AWS account was created before July 15, 2025, and is less than 12 months old [1, 2, 3]. Instance types eligible for the Free Tier are labeled as \"Free tier eligible\" [1, 2, 3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.9896889925003052
+      },
+      "notes": [],
+      "elapsed_seconds": 5.6
+    },
+    {
+      "case_id": "scoped-refuse-imdsv2-types-only",
+      "query": "How do I require the use of IMDSv2 on my EC2 instances?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.9932056665420532
+      },
+      "notes": [],
+      "elapsed_seconds": 6.2
+    },
+    {
+      "case_id": "scoped-refuse-m5-bandwidth-ug-only",
+      "query": "What is the baseline network bandwidth for the m5.xlarge instance type?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.3333333333333333,
+        "recall_at_k": 0.5,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 1,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.7366849184036255
+      },
+      "notes": [],
+      "elapsed_seconds": 9.5
+    },
+    {
+      "case_id": "scoped-refuse-placement-types-only",
+      "query": "What placement group strategies does EC2 support?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "none",
+      "grounded": false,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 0,
+        "source_accuracy": 1.0,
+        "redundancy": 0.0
+      },
+      "notes": [],
+      "elapsed_seconds": 0.1
+    },
+    {
+      "case_id": "refuse-bigquery",
+      "query": "How do I configure billing alerts in Google BigQuery?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.7440863847732544
+      },
+      "notes": [],
+      "elapsed_seconds": 8.3
+    },
+    {
+      "case_id": "refuse-s3-lifecycle",
+      "query": "How do I configure an S3 bucket lifecycle policy?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.9194982051849365
+      },
+      "notes": [],
+      "elapsed_seconds": 5.9
+    }
+  ]
+}

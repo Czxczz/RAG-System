@@ -50,6 +50,12 @@ _HUMAN_PROMPT = (
 )
 
 
+def _scope_from_ids(document_ids: list[str] | None) -> set[str] | None:
+    if not document_ids:
+        return None
+    return set(document_ids)
+
+
 @dataclass
 class LCAnswer:
     """Result of a LangChain RAG run (mirrors ``core.orchestrator.AnswerResult``)."""
@@ -90,6 +96,7 @@ def _citation_dict(marker: int, hit: SearchHit) -> dict[str, Any]:
         "chunk_id": hit.chunk.id,
         "score": round(hit.score, 4),
         "snippet": snippet,
+        "chunk_text": text,
     }
 
 
@@ -107,6 +114,7 @@ class QueryEngineRetriever(BaseRetriever):
     query_engine: Any
     top_k: int
     min_score: float
+    document_ids: set[str] | None = None
 
     # pydantic v2 model config used by BaseRetriever — allow our dataclass types.
     model_config = {"arbitrary_types_allowed": True}
@@ -120,7 +128,10 @@ class QueryEngineRetriever(BaseRetriever):
     def retrieve_hits(self, query: str) -> list[SearchHit]:
         """Return raw SearchHits (used when callers need scores / grouping)."""
         return self.query_engine.retrieve(
-            query, top_k=self.top_k, min_score=self.min_score
+            query,
+            top_k=self.top_k,
+            min_score=self.min_score,
+            document_ids=self.document_ids,
         )
 
 
@@ -183,6 +194,7 @@ class LangChainRAG:
         mode: str = "auto",
         top_k: int | None = None,
         conversation_id: str | None = None,
+        document_ids: list[str] | None = None,
     ) -> LCAnswer:
         conv_id, _ = self.conversation_store.get_or_create(conversation_id)
         history = (
@@ -195,6 +207,7 @@ class LangChainRAG:
 
         if top_k is not None and top_k != self.retriever.top_k:
             self.retriever.top_k = top_k
+        self.retriever.document_ids = _scope_from_ids(document_ids)
 
         retrieval_query = contextualize_query(query, history, self.settings, self.llm)
         hits = self.retriever.retrieve_hits(retrieval_query)
@@ -236,6 +249,7 @@ class LangChainRAG:
         mode: str = "auto",
         top_k: int | None = None,
         conversation_id: str | None = None,
+        document_ids: list[str] | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Stream the RAG answer as Server-Sent-Event-style dict events.
 
@@ -262,6 +276,7 @@ class LangChainRAG:
 
         if top_k is not None and top_k != self.retriever.top_k:
             self.retriever.top_k = top_k
+        self.retriever.document_ids = _scope_from_ids(document_ids)
 
         retrieval_query = contextualize_query(query, history, self.settings, self.llm)
         hits = self.retriever.retrieve_hits(retrieval_query)

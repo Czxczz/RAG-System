@@ -107,17 +107,31 @@ class VectorStore:
         return vectors.astype("float32")
 
     # ── Query ────────────────────────────────────────────────
-    def search(self, query_vector: np.ndarray, top_k: int) -> list[SearchHit]:
+    def search(
+        self,
+        query_vector: np.ndarray,
+        top_k: int,
+        document_ids: set[str] | None = None,
+    ) -> list[SearchHit]:
         if self._index.ntotal == 0:
             return []
         q = query_vector.reshape(1, -1).astype("float32")
-        k = min(top_k, self._index.ntotal)
+        if document_ids is None:
+            k = min(top_k, self._index.ntotal)
+        else:
+            # Oversample so enough rows survive the document filter.
+            k = min(self._index.ntotal, max(top_k * 15, 50))
         scores, indices = self._index.search(q, k)
         hits: list[SearchHit] = []
         for score, idx in zip(scores[0], indices[0]):
             if idx < 0:
                 continue
-            hits.append(SearchHit(chunk=self._metadata[idx], score=float(score)))
+            chunk = self._metadata[idx]
+            if document_ids is not None and chunk.document_id not in document_ids:
+                continue
+            hits.append(SearchHit(chunk=chunk, score=float(score)))
+            if len(hits) >= top_k:
+                break
         return hits
 
     def vectors_for(self, chunk_ids: list[str]) -> dict[str, np.ndarray]:

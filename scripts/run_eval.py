@@ -66,6 +66,7 @@ def _case_summary(c) -> dict:
         "redundancy": round(m.redundancy, 4),
         "hallucination": m.hallucination,
         "refused_correctly": m.refused_correctly,
+        "source_accuracy": round(m.source_accuracy, 4),
         "notes": c.notes,
     }
 
@@ -232,6 +233,7 @@ def main() -> int:
         "citation_accuracy": round(report.citation_accuracy, 4),
         "answer_keyword_recall": round(report.answer_keyword_recall, 4),
         "refusal_accuracy": round(report.refusal_accuracy, 4),
+        "source_accuracy": round(report.source_accuracy, 4),
         "redundancy": round(report.redundancy, 4),
         "cases": [_case_summary(c) for c in report.cases],
     }

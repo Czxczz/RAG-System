@@ -57,6 +57,7 @@ app/
 ├── models.py            # Pydantic request/response schemas
 ├── dependencies.py      # Composition root (singletons)
 ├── api/routes.py        # HTTP endpoints
+├── static/              # Web UI (HTML/CSS/JS, served at /)
 ├── chains/              # LangChain + LangGraph wrappers (optional parallel paths)
 │   ├── langchain_rag.py # LCEL: QueryEngineRetriever + LangChainRAG
 │   └── langgraph_rag.py # LangGraph: retrieve → gate → generate → validate
@@ -76,17 +77,20 @@ app/
     └── orchestrator.py     # the core brain
 
 eval/
-├── dataset.ec2.json     # Labeled EC2 user guide eval set (28 cases)
-├── report.ec2.json      # Latest Gemini eval report (28 cases)
-└── report.before.json   # Baseline before redundancy tuning
+├── dataset.ec2.json       # Labeled EC2 user guide eval set (28 cases)
+├── dataset.multidoc.json  # Multi-doc eval set (17 cases: UG + instance types)
+├── report.ec2.json        # Latest Gemini eval report (28 cases)
+├── report.multidoc.json   # Latest multi-doc eval report (17 cases)
+└── report.before.json     # Baseline before redundancy tuning
 
 scripts/
-├── run_eval.py          # Offline eval harness (in-process, not HTTP)
-├── compare_engines.py   # Side-by-side custom vs LangChain parity check
-├── diagnose_retrieval.py # Evidence-based retrieval diagnosis
-├── tune_mmr.py          # Sweep MMR lambda / dedup threshold
-├── compact_index.py     # Remove exact-duplicate chunks from FAISS index
-└── setup_ollama.sh      # Pull recommended Ollama model
+├── run_eval.py            # Offline eval harness (in-process, not HTTP)
+├── ingest_eval_corpus.py  # Ingest multi-doc eval PDFs with canonical names
+├── compare_engines.py     # Side-by-side custom vs LangChain parity check
+├── diagnose_retrieval.py  # Evidence-based retrieval diagnosis
+├── tune_mmr.py            # Sweep MMR lambda / dedup threshold
+├── compact_index.py       # Remove exact-duplicate chunks from FAISS index
+└── setup_ollama.sh        # Pull recommended Ollama model
 ```
 
 ---
@@ -127,7 +131,26 @@ Defaults work with **zero configuration**: local embeddings
 uvicorn app.main:app --reload
 ```
 
-Open the interactive docs at **http://localhost:8000/docs**.
+Open the **Web UI** at **http://localhost:8000/** or API docs at **http://localhost:8000/docs**.
+
+---
+
+## Web UI
+
+A built-in chat interface lives in `app/static/` (no npm build step).
+
+| Feature | Details |
+| --- | --- |
+| Chat | Multi-turn via `conversation_id` in `localStorage` |
+| Streaming | Toggle on → `POST /chat/stream` (token-by-token) |
+| Citations | Right panel shows sources for the latest answer |
+| Upload | Drag-and-drop PDF / TXT / Markdown |
+| Settings | LLM mode, engine (`custom` / `langchain` / `langgraph`), `top_k` |
+
+**Note:** streaming always uses the LangChain backend (`/chat/stream`). Turn
+streaming off to use `langgraph` or `custom` engines from the UI.
+
+**New conversation** clears the stored `conversation_id` and message history.
 
 ---
 
@@ -372,13 +395,13 @@ eval on multiple PDFs. No multimodal; that is a separate repo (see below).
 
 | Milestone | Scope |
 | --- | --- |
-| **Web UI** | Chat, citation panel, streaming (`/chat/stream`), upload, `conversation_id` in browser |
-| **Multi-document** | Per-document / collection scoping on retrieval + upload |
-| **Multi-doc eval** | Extend `eval/` beyond `ec2-ug.pdf` (2–3 corpora, mixed refusal cases) |
+| **Web UI** | ✅ Chat, citation panel, streaming, upload, `conversation_id` (`app/static/`) |
+| **Multi-document** | ✅ Per-document scoping on retrieval + upload (`document_ids` on `/chat`) |
+| **Multi-doc eval** | ✅ `eval/dataset.multidoc.json` + `scripts/ingest_eval_corpus.py` |
 | **LangSmith** (optional) | Dev tracing for LangGraph/UI debugging — not required to ship |
 | **Query logging** (optional) | Local SQLite log: query, engine, provider, grounded, latency |
 
-After v1: polish README, demo script, tag **`v1.0`**.
+**Remaining before `v1.0`:** merge to `main`, tag **`v1.0`**.
 
 ### Next repo — PrivateRAG Multimodal (out of scope for v1)
 
@@ -417,6 +440,7 @@ Metrics:
 | `citation_accuracy` | Share of `[n]` markers that map to a supporting chunk |
 | `answer_keyword_recall` | Expected answer phrases present in the response |
 | `refusal_accuracy` | Correct "not found" behavior on out-of-corpus questions |
+| `source_accuracy` | Retrieved chunks include the expected source PDF (multi-doc eval) |
 
 **Target redundancy** on a single large PDF: aggregate **0.75–0.82** while
 keeping recall@k ≥ 0.8.
@@ -427,6 +451,34 @@ Run all cases:
 python scripts/run_eval.py --mode gemini --no-rewrite-llm
 python scripts/run_eval.py --mode ollama --no-rewrite-llm
 ```
+
+**Multi-document eval** (User Guide + Instance Types PDFs):
+
+```bash
+# Place or ingest both corpora (canonical filenames):
+python scripts/ingest_eval_corpus.py --list-expected
+python scripts/ingest_eval_corpus.py --file ~/Downloads/ec2-ug.pdf --as ec2-ug.pdf
+python scripts/ingest_eval_corpus.py --file ~/Downloads/"Amazon EC2 Instance Types.pdf" --as ec2-types.pdf
+
+python scripts/run_eval.py --dataset eval/dataset.multidoc.json --output eval/report.multidoc.json --mode gemini --no-rewrite-llm
+```
+
+**Latest multi-doc report** (`eval/report.multidoc.json`, Gemini, `top_k=3`, 17 cases):
+
+| Metric | Score |
+| --- | --- |
+| citation_accuracy | 1.00 |
+| refusal_accuracy | 1.00 |
+| answer_keyword_recall | 1.00 |
+| source_accuracy | 1.00 |
+| hallucination_rate | 0.12 |
+| precision@k | 0.65 |
+| recall@k | 0.66 |
+| redundancy | 0.80 |
+
+`source_accuracy` measures whether retrieved chunks came from the expected PDF.
+Aggregate precision/recall are lower than the single-doc EC2 set because refusal
+cases still retrieve chunks (by design).
 
 Run one case at a time and merge into a report (useful on slow hardware or rate-limited APIs):
 

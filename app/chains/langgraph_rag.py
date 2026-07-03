@@ -40,6 +40,7 @@ class GraphState(TypedDict, total=False):
     mode: str
     top_k: int | None
     conversation_id: str | None
+    document_ids: list[str] | None
     conv_id: str
     history: list[ChatTurn]
     retrieval_query: str
@@ -101,6 +102,7 @@ class LangGraphRAG:
         mode: str = "auto",
         top_k: int | None = None,
         conversation_id: str | None = None,
+        document_ids: list[str] | None = None,
     ) -> LCAnswer:
         state = self.graph.invoke(
             {
@@ -108,6 +110,7 @@ class LangGraphRAG:
                 "mode": mode,
                 "top_k": top_k,
                 "conversation_id": conversation_id,
+                "document_ids": document_ids,
             }
         )
         return LCAnswer(
@@ -135,8 +138,12 @@ class LangGraphRAG:
         query = state["query"]
         retrieval_query = contextualize_query(query, history, self.settings, self.llm)
         top_k = state.get("top_k") if state.get("top_k") is not None else self._top_k
+        scope = _scope_from_ids(state.get("document_ids"))
         hits = self.query_engine.retrieve(
-            retrieval_query, top_k=top_k, min_score=self._min_score
+            retrieval_query,
+            top_k=top_k,
+            min_score=self._min_score,
+            document_ids=scope,
         )
         refused = not hits or self._retrieval_below_gate(hits)
         return {
@@ -226,6 +233,12 @@ def _build_user_prompt(query: str, context: str) -> str:
         f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
         "Answer with inline [n] citations."
     )
+
+
+def _scope_from_ids(document_ids: list[str] | None) -> set[str] | None:
+    if not document_ids:
+        return None
+    return set(document_ids)
 
 
 def build_langgraph_rag(orchestrator: Any) -> LangGraphRAG:
