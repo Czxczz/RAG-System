@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     answer_validation_enabled: bool = True
     answer_validation_min_support: float = 0.5
 
+    # ── Prompt injection defense ─────────────────────────────
+    # Quarantine user/document text in delimiters and harden the system prompt.
+    # When block=True, high-signal jailbreak phrases refuse before the LLM call.
+    prompt_injection_enabled: bool = True
+    prompt_injection_block: bool = True
+
     # ── Chat memory (multi-turn history) ─────────────────────
     # Keeps recent user/assistant turns per conversation_id (in-process).
     # Used to contextualize follow-up retrieval queries and pass prior turns to

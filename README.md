@@ -72,9 +72,12 @@ app/
     ├── diversity.py        # MMR + hard dedup + text Jaccard dedupe
     ├── context_grouping.py # group chunks by source, trim overlap
     ├── answer_validation.py # post-generation citation validation gate
+    ├── prompt_injection.py  # quarantine + jailbreak scan for prompts
     ├── llm_router.py       # OpenAI / Gemini / Ollama / extractive fallback
     ├── registry.py         # document catalogue
     └── orchestrator.py     # the core brain
+
+Dockerfile / docker-compose.yml  # One-command buyer setup
 
 eval/
 ├── dataset.ec2.json       # Labeled EC2 user guide eval set (28 cases)
@@ -97,7 +100,24 @@ scripts/
 
 ## Quickstart
 
-### 1. Install
+### Option A — Docker (recommended for buyers)
+
+```bash
+cp .env.example .env
+# Add OPENAI_API_KEY and/or GEMINI_API_KEY in .env (optional; extractive works without)
+
+docker compose up --build
+```
+
+Open **http://localhost:8000/**. Uploads and the FAISS index persist in `./data`.
+Model downloads are cached in a Docker volume (`model-cache`) so restarts are fast.
+
+> First start downloads the local embedding / reranker models (a few hundred MB)
+> and can take several minutes.
+
+### Option B — Local Python
+
+#### 1. Install
 
 ```bash
 python3 -m venv .venv
@@ -105,7 +125,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure (optional)
+#### 2. Configure (optional)
 
 ```bash
 cp .env.example .env
@@ -125,7 +145,7 @@ Defaults work with **zero configuration**: local embeddings
 
   Set `LLM_PROVIDER=ollama` in `.env`, or use `"mode": "ollama"` on `/chat` and eval.
 
-### 3. Run
+#### 3. Run
 
 ```bash
 uvicorn app.main:app --reload
@@ -143,7 +163,7 @@ A built-in chat interface lives in `app/static/` (no npm build step).
 | --- | --- |
 | Chat | Multi-turn via `conversation_id` in `localStorage` |
 | Streaming | Toggle on → `POST /chat/stream` (token-by-token) |
-| Citations | Right panel shows sources for the latest answer |
+| Citations | Right panel shows sources (filename + page when available) |
 | Upload | Drag-and-drop PDF / TXT / Markdown |
 | Settings | LLM mode, engine (`custom` / `langchain` / `langgraph`), `top_k` |
 
@@ -218,7 +238,7 @@ Response:
   "grounded": true,
   "provider": "gemini",
   "citations": [
-    {"marker": 1, "filename": "notes.pdf", "score": 0.71, "snippet": "..."}
+    {"marker": 1, "filename": "notes.pdf", "page": 12, "score": 0.71, "snippet": "..."}
   ],
   "validation_notes": [],
   "conversation_id": "a1b2c3..."
@@ -262,6 +282,10 @@ Configure via `.env`: `CHAT_MEMORY_ENABLED`, `CHAT_MEMORY_MAX_TURNS`,
   citations mapping to retrieved passages.
 - The **answer validation gate** checks that citations exist and are supported;
   failing answers include a disclaimer and `grounded: false`.
+- **Prompt injection defense** quarantines user/document text in delimiters,
+  strips role spoofing, and (when enabled) blocks common jailbreak phrases
+  before the LLM is called.
+- Citations include **filename + page** (for PDFs) so answers are traceable.
 - Cloud LLM failures cascade: **OpenAI / Gemini → Ollama → extractive** fallback.
 
 ---
@@ -294,6 +318,8 @@ See [`.env.example`](.env.example). Key settings:
 | `RETRIEVAL_GATE_MIN_SCORE` | `0.0` | Min post-rerank score (cross-encoder logits) |
 | `ANSWER_VALIDATION_ENABLED` | `true` | Validate citations after generation |
 | `ANSWER_VALIDATION_MIN_SUPPORT` | `0.5` | Min fraction of citations that must be supported |
+| `PROMPT_INJECTION_ENABLED` | `true` | Quarantine prompts + harden system rules |
+| `PROMPT_INJECTION_BLOCK` | `true` | Refuse common jailbreak phrases pre-LLM |
 
 ### Retrieval pipeline
 
@@ -302,6 +328,7 @@ pipeline on top of vector search:
 
 ```
 query
+  → prompt-injection scan ........ block spoof strip + optional hard block
   → rewrite into variants ........ multi-query (LLM / heuristic / taxonomy)
   → embed + FAISS top RETRIEVE_K .. per variant, fused by max-cosine
   → filter MIN_SCORE
@@ -310,6 +337,7 @@ query
   → hard cosine dedup ............. drop chunks ≥ MMR_DEDUP_THRESHOLD to a kept chunk
   → text dedupe ................... drop exact / high Jaccard overlap passages
   → context grouping .............. group by source, reading order, trim overlap
+  → quarantined prompt ............ UNTRUSTED_CONTEXT / UNTRUSTED_QUESTION tags
   → LLM (grounded answer + [n] citations)
   → answer validation ............. verify citations; disclaimer if unsupported
 ```

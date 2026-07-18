@@ -1,0 +1,30 @@
+# PrivateRAG — easy local / buyer setup
+#
+# 1. cp .env.example .env   # add OPENAI_API_KEY and/or GEMINI_API_KEY
+# 2. docker compose up --build
+# 3. open http://localhost:8000
+#
+# If `.env` is missing, Compose still starts with built-in defaults
+# (local embeddings + extractive fallback).
+services:
+  privaterag:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Ensure paths resolve inside the container even if .env uses host paths.
+      DATA_DIR: /app/data
+      # Ollama on the host (Mac/Windows Docker Desktop): use host.docker.internal
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    volumes:
+      # Persist uploads + FAISS index across restarts
+      - ./data:/app/data
+      # Cache downloaded embedding / reranker models
+      - model-cache:/cache
+    restart: unless-stopped
+
+volumes:
+  model-cache:

@@ -76,6 +76,10 @@ class Citation(BaseModel):
     marker: int = Field(..., description="Citation number referenced in the answer, e.g. [1].")
     document_id: str
     filename: str
+    page: int | None = Field(
+        default=None,
+        description="1-based PDF page number when available; null for TXT/Markdown.",
+    )
     chunk_id: str
     score: float
     snippet: str

@@ -34,6 +34,7 @@ def _to_citations(hits) -> list[Citation]:
             marker=i,
             document_id=hit.chunk.document_id,
             filename=hit.chunk.filename,
+            page=hit.chunk.page,
             chunk_id=hit.chunk.id,
             score=round(hit.score, 4),
             snippet=hit.chunk.text[:280] + ("…" if len(hit.chunk.text) > 280 else ""),

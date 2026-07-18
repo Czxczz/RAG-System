@@ -42,12 +42,14 @@ from app.core.conversation_memory import (
 )
 from app.core.llm_router import LLMRouter
 from app.core.orchestrator import NOT_FOUND_MESSAGE, SYSTEM_PROMPT
+from app.core.prompt_injection import (
+    BLOCKED_MESSAGE,
+    build_grounded_user_prompt,
+    prepare_user_query,
+)
 from app.core.vector_store import SearchHit
 
-_HUMAN_PROMPT = (
-    "CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
-    "Answer with inline [n] citations."
-)
+_HUMAN_PROMPT = "{user_prompt}"
 
 
 def _scope_from_ids(document_ids: list[str] | None) -> set[str] | None:
@@ -93,6 +95,7 @@ def _citation_dict(marker: int, hit: SearchHit) -> dict[str, Any]:
         "marker": marker,
         "document_id": hit.chunk.document_id,
         "filename": hit.chunk.filename,
+        "page": hit.chunk.page,
         "chunk_id": hit.chunk.id,
         "score": round(hit.score, 4),
         "snippet": snippet,
@@ -176,7 +179,7 @@ class LangChainRAG:
 
         def call_router(inputs: dict[str, Any]) -> dict[str, str]:
             messages = self.prompt.format_messages(
-                context=inputs["context"], query=inputs["query"]
+                user_prompt=inputs["user_prompt"]
             )
             system_text = messages[0].content
             user_text = messages[1].content
@@ -204,6 +207,26 @@ class LangChainRAG:
             if self.settings.chat_memory_enabled
             else []
         )
+
+        if self.settings.prompt_injection_enabled:
+            scan = prepare_user_query(
+                query, block=self.settings.prompt_injection_block
+            )
+            query = scan.text
+            if self.settings.prompt_injection_block and scan.flagged:
+                result = LCAnswer(
+                    answer=BLOCKED_MESSAGE,
+                    grounded=False,
+                    provider="none",
+                    hits=[],
+                    conversation_id=conv_id,
+                    validated=False,
+                    validation_notes=[
+                        f"Prompt injection blocked: {', '.join(scan.matched)}"
+                    ],
+                )
+                self._remember_exchange(conv_id, query, result.answer)
+                return result
 
         if top_k is not None and top_k != self.retriever.top_k:
             self.retriever.top_k = top_k
@@ -234,7 +257,7 @@ class LangChainRAG:
             )
         else:
             generated = self.generation_chain.invoke(
-                {"context": context, "query": query, "mode": mode}
+                {"user_prompt": user_prompt, "mode": mode}
             )
             answer, provider = generated["answer"], generated["provider"]
 
@@ -277,6 +300,24 @@ class LangChainRAG:
         if top_k is not None and top_k != self.retriever.top_k:
             self.retriever.top_k = top_k
         self.retriever.document_ids = _scope_from_ids(document_ids)
+
+        if self.settings.prompt_injection_enabled:
+            scan = prepare_user_query(
+                query, block=self.settings.prompt_injection_block
+            )
+            query = scan.text
+            if self.settings.prompt_injection_block and scan.flagged:
+                notes = [f"Prompt injection blocked: {', '.join(scan.matched)}"]
+                yield {"type": "token", "text": BLOCKED_MESSAGE}
+                yield {
+                    "type": "done",
+                    "grounded": False,
+                    "provider": "none",
+                    "validation_notes": notes,
+                    "conversation_id": conv_id,
+                }
+                self._remember_exchange(conv_id, query, BLOCKED_MESSAGE)
+                return
 
         retrieval_query = contextualize_query(query, history, self.settings, self.llm)
         hits = self.retriever.retrieve_hits(retrieval_query)
@@ -346,10 +387,7 @@ class LangChainRAG:
 
     @staticmethod
     def _build_user_prompt(query: str, context: str) -> str:
-        return (
-            f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
-            "Answer with inline [n] citations."
-        )
+        return build_grounded_user_prompt(query, context)
 
     def _remember_exchange(self, conversation_id: str, query: str, answer: str) -> None:
         if not self.settings.chat_memory_enabled:

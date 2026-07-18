@@ -226,6 +226,7 @@ function renderCitations(citations) {
   citationsEmpty.classList.add("hidden");
   for (const c of citations) {
     const fullText = c.chunk_text || c.snippet || "";
+    const pageLabel = c.page != null ? ` · p.${c.page}` : "";
     const card = document.createElement("article");
     card.className = "citation-card";
     card.tabIndex = 0;
@@ -233,7 +234,7 @@ function renderCitations(citations) {
     card.setAttribute("aria-expanded", "false");
     card.innerHTML = `
       <header>
-        <span>[${c.marker}] ${escapeHtml(c.filename)}</span>
+        <span>[${c.marker}] ${escapeHtml(c.filename)}${pageLabel}</span>
         <span>${Number(c.score).toFixed(2)}</span>
       </header>
       <div class="snippet">${escapeHtml(c.snippet)}</div>

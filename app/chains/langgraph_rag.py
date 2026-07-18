@@ -28,6 +28,11 @@ from app.core.conversation_memory import (
 )
 from app.core.llm_router import LLMRouter
 from app.core.orchestrator import NOT_FOUND_MESSAGE, SYSTEM_PROMPT
+from app.core.prompt_injection import (
+    BLOCKED_MESSAGE,
+    build_grounded_user_prompt,
+    prepare_user_query,
+)
 from app.core.vector_store import SearchHit
 
 RouteAfterRetrieve = Literal["refuse", "continue"]
@@ -104,6 +109,32 @@ class LangGraphRAG:
         conversation_id: str | None = None,
         document_ids: list[str] | None = None,
     ) -> LCAnswer:
+        if self.settings.prompt_injection_enabled:
+            scan = prepare_user_query(
+                query, block=self.settings.prompt_injection_block
+            )
+            query = scan.text
+            if self.settings.prompt_injection_block and scan.flagged:
+                conv_id, _ = self.conversation_store.get_or_create(conversation_id)
+                if self.settings.chat_memory_enabled:
+                    self.conversation_store.append_exchange(
+                        conv_id,
+                        query,
+                        BLOCKED_MESSAGE,
+                        max_turns=self.settings.chat_memory_max_turns,
+                    )
+                return LCAnswer(
+                    answer=BLOCKED_MESSAGE,
+                    grounded=False,
+                    provider="none",
+                    hits=[],
+                    validated=False,
+                    validation_notes=[
+                        f"Prompt injection blocked: {', '.join(scan.matched)}"
+                    ],
+                    conversation_id=conv_id,
+                )
+
         state = self.graph.invoke(
             {
                 "query": query,
@@ -229,10 +260,7 @@ class LangGraphRAG:
 
 
 def _build_user_prompt(query: str, context: str) -> str:
-    return (
-        f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
-        "Answer with inline [n] citations."
-    )
+    return build_grounded_user_prompt(query, context)
 
 
 def _scope_from_ids(document_ids: list[str] | None) -> set[str] | None:

@@ -28,6 +28,12 @@ from app.core.conversation_memory import (
 from app.core.embeddings import EmbeddingService
 from app.core.ingestion import ingest_file
 from app.core.llm_router import LLMRouter
+from app.core.prompt_injection import (
+    BLOCKED_MESSAGE,
+    INJECTION_SYSTEM_RULES,
+    build_grounded_user_prompt,
+    prepare_user_query,
+)
 from app.core.query_engine import QueryEngine
 from app.core.query_rewriter import QueryRewriter
 from app.core.reranker import Reranker
@@ -43,14 +49,14 @@ SYSTEM_PROMPT = """You are PrivateRAG, a careful assistant that answers \
 strictly from the provided context.
 
 Rules:
-1. Use ONLY the information in the CONTEXT block. Do not use outside knowledge.
+1. Use ONLY the information in the UNTRUSTED_CONTEXT block. Do not use outside \
+knowledge.
 2. Every factual statement must cite its source using inline markers like [1] \
 or [2], matching the numbered context passages.
 3. If the context does not contain the answer, reply exactly: \
 "I couldn't find anything relevant in your uploaded documents to answer that \
 question."
-4. Be concise and precise. Do not invent citations or facts."""
-
+4. Be concise and precise. Do not invent citations or facts.""" + INJECTION_SYSTEM_RULES
 
 @dataclass
 class IngestResult:
@@ -160,6 +166,26 @@ class RAGOrchestrator:
             else []
         )
 
+        if self.settings.prompt_injection_enabled:
+            scan = prepare_user_query(
+                query, block=self.settings.prompt_injection_block
+            )
+            query = scan.text
+            if self.settings.prompt_injection_block and scan.flagged:
+                result = AnswerResult(
+                    answer=BLOCKED_MESSAGE,
+                    grounded=False,
+                    provider="none",
+                    hits=[],
+                    conversation_id=conv_id,
+                    validated=False,
+                    validation_notes=[
+                        f"Prompt injection blocked: {', '.join(scan.matched)}"
+                    ],
+                )
+                self._remember_exchange(conv_id, query, result.answer)
+                return result
+
         k = top_k or self.settings.top_k
         scope = self.normalize_document_scope(document_ids)
         retrieval_query = contextualize_query(query, history, self.settings, self.llm)
@@ -244,10 +270,7 @@ class RAGOrchestrator:
 
     @staticmethod
     def _build_prompt(query: str, context: str) -> str:
-        return (
-            f"CONTEXT:\n{context}\n\nQUESTION: {query}\n\n"
-            "Answer with inline [n] citations."
-        )
+        return build_grounded_user_prompt(query, context)
 
     def _remember_exchange(self, conversation_id: str, query: str, answer: str) -> None:
         if not self.settings.chat_memory_enabled:
