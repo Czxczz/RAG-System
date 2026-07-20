@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 import uuid
 from pathlib import Path
 
@@ -10,7 +9,15 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
-from app.core.ingestion import SUPPORTED_EXTENSIONS
+from app.core.ingestion import (
+    SUPPORTED_EXTENSIONS,
+    SUPPORTED_FORMATS_LABEL,
+    CorruptedDocumentError,
+    EmptyDocumentError,
+    EncryptedDocumentError,
+    IngestError,
+    UnsupportedFormatError,
+)
 from app.core.orchestrator import RAGOrchestrator
 from app.dependencies import get_conversation_store, get_orchestrator
 from app.models import (
@@ -79,6 +86,60 @@ def _chat_kwargs(request: ChatRequest, orch: RAGOrchestrator) -> dict:
     }
 
 
+def _format_size(num_bytes: int) -> str:
+    mb = num_bytes / (1024 * 1024)
+    if mb >= 1:
+        return f"{mb:.0f} MB" if mb >= 10 else f"{mb:.1f} MB"
+    return f"{num_bytes // 1024} KB"
+
+
+def _save_upload_capped(upload: UploadFile, dest: Path, max_bytes: int) -> int:
+    """Stream upload to disk; raise HTTP 413 if larger than ``max_bytes``."""
+    written = 0
+    chunk_size = 1024 * 1024  # 1 MB
+    with dest.open("wb") as out:
+        while True:
+            chunk = upload.file.read(chunk_size)
+            if not chunk:
+                break
+            written += len(chunk)
+            if written > max_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        f"File is too large. Maximum upload size is "
+                        f"{_format_size(max_bytes)}."
+                    ),
+                )
+            out.write(chunk)
+    if written == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty.",
+        )
+    return written
+
+
+def _http_for_ingest_error(exc: Exception) -> HTTPException:
+    """Map ingestion failures to clear client-facing HTTP errors."""
+    if isinstance(exc, UnsupportedFormatError):
+        return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, EncryptedDocumentError):
+        return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, CorruptedDocumentError):
+        return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, EmptyDocumentError):
+        return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, IngestError):
+        return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=422, detail=str(exc))
+    return HTTPException(
+        status_code=500,
+        detail=f"Failed to ingest document: {exc}",
+    )
+
+
 @router.get("/health", response_model=HealthResponse, tags=["system"])
 def health(orch: RAGOrchestrator = Depends(get_orchestrator)) -> HealthResponse:
     settings = get_settings()
@@ -102,26 +163,31 @@ async def upload_document(
         raise HTTPException(
             status_code=400,
             detail=(
-                f"Unsupported file type '{ext}'. "
-                f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+                f"Unsupported file type '{ext or '(none)'}'. "
+                f"Supported: {SUPPORTED_FORMATS_LABEL}."
             ),
         )
 
     settings = get_settings()
     dest = settings.uploads_dir / f"{uuid.uuid4().hex}{ext}"
     try:
-        with dest.open("wb") as out:
-            shutil.copyfileobj(file.file, out)
-    finally:
-        await file.close()
+        try:
+            _save_upload_capped(file, dest, settings.max_upload_bytes)
+        finally:
+            await file.close()
 
-    try:
-        result = orch.ingest(
-            dest, filename=filename, content_type=file.content_type or "application/octet-stream"
-        )
-    except ValueError as exc:
+        try:
+            result = orch.ingest(
+                dest,
+                filename=filename,
+                content_type=file.content_type or "application/octet-stream",
+            )
+        except Exception as exc:  # noqa: BLE001 — mapped to HTTP below
+            dest.unlink(missing_ok=True)
+            raise _http_for_ingest_error(exc) from exc
+    except HTTPException:
         dest.unlink(missing_ok=True)
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise
 
     return UploadResponse(document=_to_info(result.record))
 

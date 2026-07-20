@@ -1,11 +1,33 @@
 # PrivateRAG AI Assistant
 
 A **private, hybrid RAG-based AI knowledge assistant**. Upload your documents
-(PDF / Markdown / TXT) and ask natural-language questions — get **grounded
+(PDF / DOCX / Markdown / TXT) and ask natural-language questions — get **grounded
 answers with citations**, powered by a **local or cloud LLM** of your choice.
 
 > Turn any private documents into a trustworthy AI assistant that answers with
 > evidence.
+
+---
+
+## Supported document formats
+
+| Format | Extension | Notes |
+| --- | --- | --- |
+| PDF (text-based) | `.pdf` | Page numbers preserved in citations |
+| Word | `.docx` | Paragraphs + tables |
+| Plain text | `.txt` | UTF-8 |
+| Markdown | `.md`, `.markdown` | UTF-8 |
+
+**Not supported yet:** scanned PDF / OCR, `.doc` (legacy Word), Excel, PowerPoint.
+
+Upload errors return clear HTTP messages:
+
+| Situation | HTTP |
+| --- | --- |
+| Unsupported type | `400` |
+| Empty file | `400` |
+| Over `MAX_UPLOAD_BYTES` (default 25 MB) | `413` |
+| Corrupted / unreadable / encrypted / no text | `422` |
 
 ---
 
@@ -164,7 +186,7 @@ A built-in chat interface lives in `app/static/` (no npm build step).
 | Chat | Multi-turn via `conversation_id` in `localStorage` |
 | Streaming | Toggle on → `POST /chat/stream` (token-by-token) |
 | Citations | Right panel shows sources (filename + page when available) |
-| Upload | Drag-and-drop PDF / TXT / Markdown |
+| Upload | Drag-and-drop PDF / DOCX / TXT / Markdown |
 | Settings | LLM mode, engine (`custom` / `langchain` / `langgraph`), `top_k` |
 
 **Note:** streaming always uses the LangChain backend (`/chat/stream`). Turn
@@ -179,7 +201,7 @@ streaming off to use `langgraph` or `custom` engines from the UI.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Status, providers, document/chunk counts |
-| `POST` | `/documents/upload` | Upload & ingest a PDF/MD/TXT file |
+| `POST` | `/documents/upload` | Upload & ingest a PDF/DOCX/MD/TXT file |
 | `GET` | `/documents` | List ingested documents |
 | `DELETE` | `/documents/{id}` | Delete a document and its chunks |
 | `POST` | `/chat` | Ask a question → grounded answer + citations |
@@ -297,6 +319,7 @@ See [`.env.example`](.env.example). Key settings:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
+| `MAX_UPLOAD_BYTES` | `26214400` (25 MB) | Reject larger uploads with HTTP 413 |
 | `LOCAL_EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Hugging Face model for local embeddings |
 | `LLM_PROVIDER` | `auto` | `auto` / `openai` / `gemini` / `ollama` / `extractive` |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | — / `gemini-2.5-flash` | Google Gemini cloud |

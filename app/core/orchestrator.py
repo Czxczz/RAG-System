@@ -111,9 +111,6 @@ class RAGOrchestrator:
             chunk_size=self.settings.chunk_size,
             chunk_overlap=self.settings.chunk_overlap,
         )
-        if not chunks:
-            raise ValueError("No extractable text found in the document.")
-
         stored = [
             StoredChunk(
                 id=f"{document_id}:{c.chunk_index}",

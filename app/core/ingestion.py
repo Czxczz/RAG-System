@@ -4,8 +4,8 @@ Transforms a raw document into clean, fixed-size text chunks:
 
     load -> extract text -> clean -> chunk (sentence-aware, character budget)
 
-Supported formats: PDF (.pdf), Markdown (.md/.markdown), plain text (.txt).
-Embedding + storage happen downstream in the orchestrator.
+Supported formats: PDF (.pdf), Word (.docx), Markdown (.md/.markdown),
+plain text (.txt). Embedding + storage happen downstream in the orchestrator.
 """
 from __future__ import annotations
 
@@ -14,8 +14,32 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 
-SUPPORTED_EXTENSIONS = {".pdf", ".md", ".markdown", ".txt"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".txt"}
+
+# Human-readable labels for API / UI error messages.
+SUPPORTED_FORMATS_LABEL = "PDF, DOCX, TXT, Markdown"
+
+
+class IngestError(ValueError):
+    """Base class for user-facing ingestion failures."""
+
+
+class UnsupportedFormatError(IngestError):
+    """File extension is not in the allowlist."""
+
+
+class EncryptedDocumentError(IngestError):
+    """Document is password-protected and cannot be read."""
+
+
+class CorruptedDocumentError(IngestError):
+    """File is damaged or not a valid document of its claimed type."""
+
+
+class EmptyDocumentError(IngestError):
+    """No extractable text (e.g. scanned PDF without OCR, blank DOCX)."""
 
 
 @dataclass
@@ -35,25 +59,113 @@ def extract_text(path: Path) -> list[tuple[int | None, str]]:
     """Extract text from a document.
 
     Returns a list of (page_number, text) tuples. For non-paginated formats
-    (txt, md) the page number is None and there is a single entry.
+    (txt, md, docx) the page number is None and there is a single entry.
     """
     suffix = path.suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
-        raise ValueError(
+        raise UnsupportedFormatError(
             f"Unsupported file type '{suffix}'. "
-            f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+            f"Supported: {SUPPORTED_FORMATS_LABEL}."
         )
 
     if suffix == ".pdf":
-        reader = PdfReader(str(path))
-        pages: list[tuple[int | None, str]] = []
-        for i, page in enumerate(reader.pages, start=1):
-            pages.append((i, page.extract_text() or ""))
-        return pages
+        return _extract_pdf(path)
+    if suffix == ".docx":
+        return _extract_docx(path)
 
     # md / txt
-    text = path.read_text(encoding="utf-8", errors="ignore")
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        raise CorruptedDocumentError(
+            f"Could not read '{path.name}': {exc}"
+        ) from exc
     return [(None, text)]
+
+
+def _extract_pdf(path: Path) -> list[tuple[int | None, str]]:
+    try:
+        reader = PdfReader(str(path))
+    except PdfReadError as exc:
+        raise CorruptedDocumentError(
+            f"PDF '{path.name}' appears corrupted or unreadable. "
+            "Try re-exporting or converting it to a new PDF."
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 — surface as corrupt to the client
+        raise CorruptedDocumentError(
+            f"Failed to open PDF '{path.name}': {exc}"
+        ) from exc
+
+    if getattr(reader, "is_encrypted", False):
+        unlocked = False
+        try:
+            # Empty password unlocks some "encrypted" but open PDFs.
+            result = reader.decrypt("")  # type: ignore[attr-defined]
+            unlocked = bool(result)
+        except Exception:
+            unlocked = False
+        if not unlocked:
+            raise EncryptedDocumentError(
+                f"PDF '{path.name}' is password-protected. "
+                "Remove the password and upload again."
+            )
+
+    pages: list[tuple[int | None, str]] = []
+    try:
+        for i, page in enumerate(reader.pages, start=1):
+            pages.append((i, page.extract_text() or ""))
+    except Exception as exc:  # noqa: BLE001
+        raise CorruptedDocumentError(
+            f"PDF '{path.name}' could not be parsed: {exc}"
+        ) from exc
+    return pages
+
+
+def _extract_docx(path: Path) -> list[tuple[int | None, str]]:
+    try:
+        from docx import Document
+        from docx.opc.exceptions import PackageNotFoundError
+    except ImportError as exc:  # pragma: no cover
+        raise IngestError(
+            "DOCX support requires the 'python-docx' package. "
+            "Install with: pip install python-docx"
+        ) from exc
+
+    try:
+        document = Document(str(path))
+    except PackageNotFoundError as exc:
+        raise CorruptedDocumentError(
+            f"DOCX '{path.name}' is not a valid Word file (or is corrupted)."
+        ) from exc
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc).lower()
+        if "password" in msg or "encrypt" in msg:
+            raise EncryptedDocumentError(
+                f"DOCX '{path.name}' is password-protected. "
+                "Remove the password and upload again."
+            ) from exc
+        raise CorruptedDocumentError(
+            f"Failed to open DOCX '{path.name}': {exc}"
+        ) from exc
+
+    parts: list[str] = []
+    for para in document.paragraphs:
+        text = (para.text or "").strip()
+        if text:
+            parts.append(text)
+
+    # Include table cell text so spreadsheets-in-Word aren't dropped.
+    for table in document.tables:
+        for row in table.rows:
+            cells = [
+                (cell.text or "").strip()
+                for cell in row.cells
+                if (cell.text or "").strip()
+            ]
+            if cells:
+                parts.append(" | ".join(cells))
+
+    return [(None, "\n\n".join(parts))]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -172,4 +284,11 @@ def ingest_file(path: Path, chunk_size: int, chunk_overlap: int) -> list[Chunk]:
         )
         chunks.extend(page_chunks)
         next_index += len(page_chunks)
+
+    if not chunks:
+        raise EmptyDocumentError(
+            f"No extractable text found in '{path.name}'. "
+            "If this is a scanned PDF, OCR is not supported yet — "
+            "use a text-based PDF, DOCX, TXT, or Markdown file."
+        )
     return chunks

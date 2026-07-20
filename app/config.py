@@ -20,6 +20,8 @@ class Settings(BaseSettings):
 
     # ── Storage ──────────────────────────────────────────────
     data_dir: Path = Path("data")
+    # Reject uploads larger than this (bytes). Default 25 MB.
+    max_upload_bytes: int = 25 * 1024 * 1024
 
     # ── Embeddings ───────────────────────────────────────────
     embedding_provider: str = "local"  # "local" | "openai"

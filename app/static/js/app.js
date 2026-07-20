@@ -367,7 +367,14 @@ async function uploadFile(file) {
   const res = await fetch("/documents/upload", { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Upload failed");
+    const detail = err.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+          : "Upload failed";
+    throw new Error(message);
   }
   await loadDocuments();
   await fetchHealth();
