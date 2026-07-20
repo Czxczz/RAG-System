@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     chunk_size: int = 800
     chunk_overlap: int = 120
 
+    # ── OCR (scanned PDFs) ───────────────────────────────────
+    # When a PDF page has little/no native text, rasterize + Tesseract OCR.
+    # Requires the tesseract binary (included in the Docker image).
+    ocr_enabled: bool = True
+    ocr_language: str = "eng"
+    ocr_dpi: int = 200
+    ocr_min_chars_per_page: int = 40
+
     # ── Retrieval ────────────────────────────────────────────
     top_k: int = 3
     min_score: float = 0.20

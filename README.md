@@ -1,8 +1,9 @@
 # PrivateRAG AI Assistant
 
 A **private, hybrid RAG-based AI knowledge assistant**. Upload your documents
-(PDF / DOCX / Markdown / TXT) and ask natural-language questions — get **grounded
-answers with citations**, powered by a **local or cloud LLM** of your choice.
+(PDF including scanned/OCR, DOCX, Markdown, TXT) and ask natural-language
+questions — get **grounded answers with citations**, powered by a **local or
+cloud LLM** of your choice.
 
 > Turn any private documents into a trustworthy AI assistant that answers with
 > evidence.
@@ -14,11 +15,16 @@ answers with citations**, powered by a **local or cloud LLM** of your choice.
 | Format | Extension | Notes |
 | --- | --- | --- |
 | PDF (text-based) | `.pdf` | Page numbers preserved in citations |
+| PDF (scanned) | `.pdf` | OCR via Tesseract when page text is sparse |
 | Word | `.docx` | Paragraphs + tables |
 | Plain text | `.txt` | UTF-8 |
 | Markdown | `.md`, `.markdown` | UTF-8 |
 
-**Not supported yet:** scanned PDF / OCR, `.doc` (legacy Word), Excel, PowerPoint.
+**Not supported yet:** `.doc` (legacy Word), Excel, PowerPoint.
+
+OCR notes: enabled by default (`OCR_ENABLED=true`). The Docker image includes
+Tesseract. For local Python installs, run `brew install tesseract` (macOS) or
+`apt install tesseract-ocr` (Debian/Ubuntu).
 
 Upload errors return clear HTTP messages:
 
@@ -85,7 +91,8 @@ app/
 │   └── langgraph_rag.py # LangGraph: retrieve → gate → generate → validate
 ├── eval/                # Offline eval schemas, metrics, runner
 └── core/
-    ├── ingestion.py        # load → extract → clean → chunk
+    ├── ingestion.py        # load → extract → OCR (PDF) → clean → chunk
+    ├── ocr.py              # Tesseract OCR for scanned PDF pages
     ├── embeddings.py       # local (sentence-transformers) | OpenAI
     ├── vector_store.py     # FAISS index + persisted metadata
     ├── query_rewriter.py   # multi-query expansion (LLM + heuristic + taxonomy)
@@ -186,7 +193,7 @@ A built-in chat interface lives in `app/static/` (no npm build step).
 | Chat | Multi-turn via `conversation_id` in `localStorage` |
 | Streaming | Toggle on → `POST /chat/stream` (token-by-token) |
 | Citations | Right panel shows sources (filename + page when available) |
-| Upload | Drag-and-drop PDF / DOCX / TXT / Markdown |
+| Upload | Drag-and-drop PDF (text/scanned) / DOCX / TXT / Markdown |
 | Settings | LLM mode, engine (`custom` / `langchain` / `langgraph`), `top_k` |
 
 **Note:** streaming always uses the LangChain backend (`/chat/stream`). Turn
@@ -320,6 +327,10 @@ See [`.env.example`](.env.example). Key settings:
 | --- | --- | --- |
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
 | `MAX_UPLOAD_BYTES` | `26214400` (25 MB) | Reject larger uploads with HTTP 413 |
+| `OCR_ENABLED` | `true` | OCR sparse/scanned PDF pages via Tesseract |
+| `OCR_LANGUAGE` | `eng` | Tesseract language pack |
+| `OCR_DPI` | `200` | Rasterization DPI for OCR |
+| `OCR_MIN_CHARS_PER_PAGE` | `40` | Native text below this → try OCR |
 | `LOCAL_EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Hugging Face model for local embeddings |
 | `LLM_PROVIDER` | `auto` | `auto` / `openai` / `gemini` / `ollama` / `extractive` |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | — / `gemini-2.5-flash` | Google Gemini cloud |

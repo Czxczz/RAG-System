@@ -2,13 +2,14 @@
 
 Transforms a raw document into clean, fixed-size text chunks:
 
-    load -> extract text -> clean -> chunk (sentence-aware, character budget)
+    load -> extract text (-> OCR for scanned PDF pages) -> clean -> chunk
 
-Supported formats: PDF (.pdf), Word (.docx), Markdown (.md/.markdown),
-plain text (.txt). Embedding + storage happen downstream in the orchestrator.
+Supported formats: PDF (.pdf, text or scanned with OCR), Word (.docx),
+Markdown (.md/.markdown), plain text (.txt).
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,10 +17,14 @@ from pathlib import Path
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
+from app.core.ocr import OcrUnavailableError, ocr_pdf_pages
+
+logger = logging.getLogger(__name__)
+
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".md", ".markdown", ".txt"}
 
 # Human-readable labels for API / UI error messages.
-SUPPORTED_FORMATS_LABEL = "PDF, DOCX, TXT, Markdown"
+SUPPORTED_FORMATS_LABEL = "PDF (text or scanned/OCR), DOCX, TXT, Markdown"
 
 
 class IngestError(ValueError):
@@ -39,7 +44,7 @@ class CorruptedDocumentError(IngestError):
 
 
 class EmptyDocumentError(IngestError):
-    """No extractable text (e.g. scanned PDF without OCR, blank DOCX)."""
+    """No extractable text (blank file, or scanned PDF with OCR disabled)."""
 
 
 @dataclass
@@ -52,10 +57,24 @@ class Chunk:
     metadata: dict = field(default_factory=dict)
 
 
+@dataclass
+class OcrOptions:
+    """Optional OCR settings for scanned PDF pages."""
+
+    enabled: bool = True
+    language: str = "eng"
+    dpi: int = 200
+    # If native text on a page has fewer characters than this, try OCR.
+    min_chars: int = 40
+
+
 # ─────────────────────────────────────────────────────────────
 # 1. Text extraction
 # ─────────────────────────────────────────────────────────────
-def extract_text(path: Path) -> list[tuple[int | None, str]]:
+def extract_text(
+    path: Path,
+    ocr: OcrOptions | None = None,
+) -> list[tuple[int | None, str]]:
     """Extract text from a document.
 
     Returns a list of (page_number, text) tuples. For non-paginated formats
@@ -69,7 +88,7 @@ def extract_text(path: Path) -> list[tuple[int | None, str]]:
         )
 
     if suffix == ".pdf":
-        return _extract_pdf(path)
+        return _extract_pdf(path, ocr=ocr or OcrOptions())
     if suffix == ".docx":
         return _extract_docx(path)
 
@@ -83,7 +102,10 @@ def extract_text(path: Path) -> list[tuple[int | None, str]]:
     return [(None, text)]
 
 
-def _extract_pdf(path: Path) -> list[tuple[int | None, str]]:
+def _extract_pdf(
+    path: Path,
+    ocr: OcrOptions,
+) -> list[tuple[int | None, str]]:
     try:
         reader = PdfReader(str(path))
     except PdfReadError as exc:
@@ -118,7 +140,63 @@ def _extract_pdf(path: Path) -> list[tuple[int | None, str]]:
         raise CorruptedDocumentError(
             f"PDF '{path.name}' could not be parsed: {exc}"
         ) from exc
-    return pages
+
+    return _maybe_ocr_pdf_pages(path, pages, ocr)
+
+
+def _maybe_ocr_pdf_pages(
+    path: Path,
+    pages: list[tuple[int | None, str]],
+    ocr: OcrOptions,
+) -> list[tuple[int | None, str]]:
+    """Fill in low-text / blank PDF pages via OCR when enabled."""
+    if not ocr.enabled or not pages:
+        return pages
+
+    weak_pages = [
+        int(page_no)
+        for page_no, text in pages
+        if page_no is not None and len((text or "").strip()) < ocr.min_chars
+    ]
+    if not weak_pages:
+        return pages
+
+    try:
+        ocr_texts = ocr_pdf_pages(
+            path,
+            weak_pages,
+            dpi=ocr.dpi,
+            language=ocr.language,
+        )
+    except OcrUnavailableError as exc:
+        # If native text already exists somewhere, keep it; otherwise fail clearly.
+        if any((text or "").strip() for _, text in pages):
+            logger.warning(
+                "OCR unavailable for %s (%s); using native text only.",
+                path.name,
+                exc,
+            )
+            return pages
+        raise IngestError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        if any((text or "").strip() for _, text in pages):
+            logger.warning("OCR failed for %s: %s", path.name, exc)
+            return pages
+        raise IngestError(
+            f"OCR failed for scanned PDF '{path.name}': {exc}"
+        ) from exc
+
+    merged: list[tuple[int | None, str]] = []
+    for page_no, text in pages:
+        native = (text or "").strip()
+        if page_no is not None and page_no in ocr_texts:
+            ocr_text = (ocr_texts[page_no] or "").strip()
+            # Prefer the longer of native vs OCR for that page.
+            if len(ocr_text) > len(native):
+                merged.append((page_no, ocr_text))
+                continue
+        merged.append((page_no, text))
+    return merged
 
 
 def _extract_docx(path: Path) -> list[tuple[int | None, str]]:
@@ -266,9 +344,14 @@ def chunk_text(
     return chunks
 
 
-def ingest_file(path: Path, chunk_size: int, chunk_overlap: int) -> list[Chunk]:
+def ingest_file(
+    path: Path,
+    chunk_size: int,
+    chunk_overlap: int,
+    ocr: OcrOptions | None = None,
+) -> list[Chunk]:
     """Full pipeline for one file: extract -> clean -> chunk."""
-    pages = extract_text(path)
+    pages = extract_text(path, ocr=ocr)
     chunks: list[Chunk] = []
     next_index = 0
     for page_no, raw in pages:
@@ -286,9 +369,11 @@ def ingest_file(path: Path, chunk_size: int, chunk_overlap: int) -> list[Chunk]:
         next_index += len(page_chunks)
 
     if not chunks:
+        hint = (
+            "If this is a scanned PDF, enable OCR (OCR_ENABLED=true) and install "
+            "Tesseract, or use a text-based PDF / DOCX / TXT / Markdown file."
+        )
         raise EmptyDocumentError(
-            f"No extractable text found in '{path.name}'. "
-            "If this is a scanned PDF, OCR is not supported yet — "
-            "use a text-based PDF, DOCX, TXT, or Markdown file."
+            f"No extractable text found in '{path.name}'. {hint}"
         )
     return chunks

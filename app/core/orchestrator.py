@@ -26,7 +26,7 @@ from app.core.conversation_memory import (
     contextualize_query,
 )
 from app.core.embeddings import EmbeddingService
-from app.core.ingestion import ingest_file
+from app.core.ingestion import OcrOptions, ingest_file
 from app.core.llm_router import LLMRouter
 from app.core.prompt_injection import (
     BLOCKED_MESSAGE,
@@ -110,6 +110,12 @@ class RAGOrchestrator:
             source_path,
             chunk_size=self.settings.chunk_size,
             chunk_overlap=self.settings.chunk_overlap,
+            ocr=OcrOptions(
+                enabled=self.settings.ocr_enabled,
+                language=self.settings.ocr_language,
+                dpi=self.settings.ocr_dpi,
+                min_chars=self.settings.ocr_min_chars_per_page,
+            ),
         )
         stored = [
             StoredChunk(
