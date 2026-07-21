@@ -116,3 +116,64 @@ class HealthResponse(BaseModel):
     llm_provider: str
     documents: int
     chunks: int
+    auth_enabled: bool = False
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+class LoginResponse(BaseModel):
+    token: str
+    username: str
+    role: Literal["admin", "user"]
+    message: str = "Logged in."
+
+
+class MeResponse(BaseModel):
+    username: str
+    role: Literal["admin", "user"]
+    auth_enabled: bool
+
+
+class AuthStatusResponse(BaseModel):
+    auth_enabled: bool
+    default_hint: str | None = None
+
+
+class ConfigUpdateRequest(BaseModel):
+    """Partial admin config update. Omitted / empty secrets are left unchanged."""
+
+    openai_api_key: Optional[str] = None
+    openai_chat_model: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    gemini_model: Optional[str] = None
+    ollama_base_url: Optional[str] = None
+    ollama_model: Optional[str] = None
+    llm_provider: Optional[str] = None
+    chunk_size: Optional[int] = Field(default=None, ge=100, le=8000)
+    chunk_overlap: Optional[int] = Field(default=None, ge=0, le=2000)
+    top_k: Optional[int] = Field(default=None, ge=1, le=20)
+    min_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    rerank_enabled: Optional[bool] = None
+    retrieve_k: Optional[int] = Field(default=None, ge=1, le=100)
+    mmr_enabled: Optional[bool] = None
+    mmr_lambda: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    mmr_dedup_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    ocr_enabled: Optional[bool] = None
+    ocr_language: Optional[str] = None
+    ocr_dpi: Optional[int] = Field(default=None, ge=72, le=600)
+    ocr_min_chars_per_page: Optional[int] = Field(default=None, ge=0, le=500)
+    retrieval_gate_enabled: Optional[bool] = None
+    retrieval_gate_min_score: Optional[float] = None
+    answer_validation_enabled: Optional[bool] = None
+    answer_validation_min_support: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    prompt_injection_enabled: Optional[bool] = None
+    prompt_injection_block: Optional[bool] = None
+    max_upload_bytes: Optional[int] = Field(default=None, ge=1024, le=500 * 1024 * 1024)
+
+
+class ConfigResponse(BaseModel):
+    config: dict
+    message: str = "OK"

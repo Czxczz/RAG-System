@@ -10,7 +10,31 @@
   <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
-  <div class="app">
+  <!-- Login gate (shown only when AUTH_ENABLED=true) -->
+  <div id="login-screen" class="login-screen hidden">
+    <form id="login-form" class="login-card">
+      <div class="brand login-brand">
+        <span class="brand-mark">◈</span>
+        <div>
+          <h1>PrivateRAG</h1>
+          <p class="brand-sub">Sign in to continue</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>Username</span>
+        <input type="text" id="login-username" autocomplete="username" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="login-password" autocomplete="current-password" required />
+      </label>
+      <p id="login-error" class="login-error hidden"></p>
+      <button type="submit" class="btn btn-primary login-btn">Sign in</button>
+      <p class="login-hint muted">Admin can manage config &amp; delete docs. Users can chat &amp; upload.</p>
+    </form>
+  </div>
+
+  <div id="app-shell" class="app hidden">
     <aside class="sidebar">
       <div class="brand">
         <span class="brand-mark">◈</span>
@@ -21,20 +45,33 @@
       </div>
 
       <div id="health-pill" class="health-pill" aria-live="polite">Checking…</div>
+      <div id="user-bar" class="user-bar hidden">
+        <span id="user-label"></span>
+        <button type="button" id="logout-btn" class="btn btn-ghost btn-tiny">Log out</button>
+      </div>
 
       <section class="panel">
         <h2>Documents</h2>
         <p class="panel-hint">Uncheck to limit chat to specific documents.</p>
         <label class="upload-zone" id="upload-zone">
-          <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.markdown" hidden />
-          <span>Drop a file or click to upload</span>
+          <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.markdown" multiple hidden />
+          <span>Drop files or click to upload</span>
           <small>PDF (incl. scanned), DOCX, TXT, Markdown</small>
         </label>
+        <div id="upload-progress" class="upload-progress hidden" aria-live="polite">
+          <div class="upload-progress-meta">
+            <span id="upload-progress-label">Uploading…</span>
+            <span id="upload-progress-pct">0%</span>
+          </div>
+          <div class="upload-progress-track">
+            <div id="upload-progress-bar" class="upload-progress-bar"></div>
+          </div>
+        </div>
         <ul id="doc-list" class="doc-list"></ul>
       </section>
 
       <section class="panel">
-        <h2>Settings</h2>
+        <h2>Chat settings</h2>
         <label class="field">
           <span>LLM mode</span>
           <select id="mode-select">
@@ -65,6 +102,85 @@
           <input type="number" id="top-k-input" min="1" max="20" value="3" />
         </label>
         <button type="button" id="new-chat-btn" class="btn btn-ghost">New conversation</button>
+      </section>
+
+      <section id="admin-panel" class="panel admin-panel hidden">
+        <h2>Admin configuration</h2>
+        <p class="panel-hint">API keys &amp; RAG thresholds. Saved to <code>data/runtime_settings.json</code>.</p>
+        <form id="config-form" class="config-form">
+          <label class="field">
+            <span>LLM provider</span>
+            <select id="cfg-llm_provider">
+              <option value="auto">auto</option>
+              <option value="openai">openai</option>
+              <option value="gemini">gemini</option>
+              <option value="ollama">ollama</option>
+              <option value="extractive">extractive</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>OpenAI API key</span>
+            <input type="password" id="cfg-openai_api_key" placeholder="unchanged if blank" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>OpenAI chat model</span>
+            <input type="text" id="cfg-openai_chat_model" />
+          </label>
+          <label class="field">
+            <span>Gemini API key</span>
+            <input type="password" id="cfg-gemini_api_key" placeholder="unchanged if blank" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Gemini model</span>
+            <input type="text" id="cfg-gemini_model" />
+          </label>
+          <label class="field">
+            <span>Ollama base URL</span>
+            <input type="text" id="cfg-ollama_base_url" />
+          </label>
+          <label class="field">
+            <span>Ollama model</span>
+            <input type="text" id="cfg-ollama_model" />
+          </label>
+          <label class="field">
+            <span>Default top_k</span>
+            <input type="number" id="cfg-top_k" min="1" max="20" />
+          </label>
+          <label class="field">
+            <span>Min score</span>
+            <input type="number" id="cfg-min_score" min="0" max="1" step="0.01" />
+          </label>
+          <label class="field">
+            <span>Chunk size</span>
+            <input type="number" id="cfg-chunk_size" min="100" max="8000" />
+          </label>
+          <label class="field">
+            <span>Chunk overlap</span>
+            <input type="number" id="cfg-chunk_overlap" min="0" max="2000" />
+          </label>
+          <label class="field checkbox">
+            <input type="checkbox" id="cfg-ocr_enabled" />
+            <span>OCR for scanned PDFs</span>
+          </label>
+          <label class="field checkbox">
+            <input type="checkbox" id="cfg-rerank_enabled" />
+            <span>Rerank enabled</span>
+          </label>
+          <label class="field checkbox">
+            <input type="checkbox" id="cfg-mmr_enabled" />
+            <span>MMR diversity</span>
+          </label>
+          <label class="field">
+            <span>MMR lambda</span>
+            <input type="number" id="cfg-mmr_lambda" min="0" max="1" step="0.05" />
+          </label>
+          <label class="field checkbox">
+            <input type="checkbox" id="cfg-prompt_injection_enabled" />
+            <span>Prompt injection defense</span>
+          </label>
+          <p id="config-status" class="config-status muted"></p>
+          <button type="submit" class="btn btn-primary">Save configuration</button>
+        </form>
       </section>
     </aside>
 

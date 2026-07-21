@@ -3,6 +3,7 @@
 const STORAGE_KEY = "privaterag.conversation_id";
 const SETTINGS_KEY = "privaterag.settings";
 const SCOPE_KEY = "privaterag.document_scope";
+const TOKEN_KEY = "privaterag.token";
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -20,12 +21,51 @@ const queryInput = $("#query-input");
 const sendBtn = $("#send-btn");
 const fileInput = $("#file-input");
 const uploadZone = $("#upload-zone");
+const uploadProgress = $("#upload-progress");
+const uploadProgressLabel = $("#upload-progress-label");
+const uploadProgressPct = $("#upload-progress-pct");
+const uploadProgressBar = $("#upload-progress-bar");
+const loginScreen = $("#login-screen");
+const appShell = $("#app-shell");
+const adminPanel = $("#admin-panel");
+const userBar = $("#user-bar");
+const userLabel = $("#user-label");
 
 let conversationId = localStorage.getItem(STORAGE_KEY) || null;
 let isBusy = false;
 let engineBeforeStream = null;
 let allDocumentIds = [];
 let selectedDocIds = new Set();
+let currentUser = { username: "local", role: "admin", auth_enabled: false };
+let authToken = localStorage.getItem(TOKEN_KEY) || "";
+
+const STAGE_LABELS = {
+  saving: "Saving file",
+  extracting: "Extracting text",
+  chunking: "Chunking",
+  chunked: "Chunks ready",
+  embedding: "Embedding",
+  indexing: "Indexing",
+  done: "Done",
+};
+
+function authHeaders(extra = {}) {
+  const headers = { ...extra };
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  return headers;
+}
+
+async function apiFetch(url, options = {}) {
+  const opts = { ...options };
+  opts.headers = authHeaders(opts.headers || {});
+  const res = await fetch(url, opts);
+  if (res.status === 401 && currentUser.auth_enabled) {
+    clearSession();
+    showLogin("Session expired. Please sign in again.");
+    throw new Error("Authentication required");
+  }
+  return res;
+}
 
 function loadSettings() {
   try {
@@ -121,87 +161,38 @@ function formatAssistantHtml(text) {
       }
       return `<p>${l}</p>`;
     })
-    .filter(Boolean)
     .join("");
 }
 
-function setMessageContent(contentEl, text, markdown) {
-  if (markdown) {
-    contentEl.innerHTML = formatAssistantHtml(text);
-  } else {
-    contentEl.textContent = text;
-  }
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-function setAssistantMeta(row, provider, grounded) {
-  const meta = row.querySelector(".message-meta");
-  if (!meta) return;
-  meta.innerHTML = "";
-  if (provider && provider !== "none") {
-    const badge = document.createElement("span");
-    badge.className = `provider-badge ${provider}`;
-    badge.textContent = providerLabel(provider);
-    meta.appendChild(badge);
-  }
-  if (grounded !== null && grounded !== undefined) {
-    const badge = document.createElement("span");
-    badge.className = `grounded-badge ${grounded ? "yes" : "no"}`;
-    badge.textContent = grounded ? "Grounded" : "Unverified";
-    meta.appendChild(badge);
-  }
+function paintFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-function updateAssistantMessage(row, text, { provider, grounded, streaming } = {}) {
-  const content = row.querySelector(".message-content");
-  const bubble = row.querySelector(".message-bubble");
-  if (content) {
-    setMessageContent(content, text, true);
-  }
-  if (provider) {
-    row.classList.add(`provider-${provider}`);
-    setAssistantMeta(row, provider, grounded);
-  }
-  if (streaming === false && bubble) {
-    bubble.classList.remove("streaming");
-  }
-  scrollMessages();
-}
-
-function appendMessage(role, text, options = {}) {
-  const extraClass =
-    typeof options === "string" ? options : options.extraClass || "";
-  const opts = typeof options === "string" ? { extraClass } : options;
-  const { provider = null, grounded = null, markdown = role === "assistant" } = opts;
-
+function appendMessage(role, text, opts = {}) {
   const row = document.createElement("div");
-  row.className = `message-row ${role}`;
-  if (provider) {
-    row.classList.add(`provider-${provider}`);
-  }
-
-  if (role === "system") {
-    const el = document.createElement("div");
-    el.className = "message-system";
-    el.textContent = text;
-    row.appendChild(el);
-  } else if (role === "user") {
-    row.innerHTML = `
-      <div class="message-avatar user" aria-hidden="true">You</div>
-      <div class="message-bubble user">
-        <div class="message-content"></div>
-      </div>`;
-    row.querySelector(".message-content").textContent = text;
+  row.className = `message ${role}${opts.extraClass ? " " + opts.extraClass : ""}`;
+  const content = document.createElement("div");
+  content.className = "message-content";
+  if (role === "assistant" && opts.markdown !== false) {
+    content.innerHTML = formatAssistantHtml(text);
   } else {
-    row.innerHTML = `
-      <div class="message-avatar assistant" aria-hidden="true">◇</div>
-      <div class="message-bubble assistant ${extraClass}">
-        <div class="message-meta"></div>
-        <div class="message-content"></div>
-      </div>`;
-    setAssistantMeta(row, provider, grounded);
-    setMessageContent(row.querySelector(".message-content"), text, markdown && text.length > 0);
+    content.textContent = text;
   }
-
+  row.appendChild(content);
+  if (role === "assistant") {
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+    row.appendChild(meta);
+    setAssistantMeta(row, opts.provider, opts.grounded);
+  }
   messagesEl.appendChild(row);
   scrollMessages();
   return row;
@@ -211,10 +202,70 @@ function createAssistantMessage() {
   return appendMessage("assistant", "", { extraClass: "streaming", markdown: false });
 }
 
+function updateAssistantMessage(row, text, opts = {}) {
+  const content = row.querySelector(".message-content");
+  if (opts.streaming) {
+    content.textContent = text;
+  } else {
+    content.innerHTML = formatAssistantHtml(text);
+    row.classList.remove("streaming");
+  }
+  if (opts.provider != null || opts.grounded != null) {
+    setAssistantMeta(row, opts.provider, opts.grounded);
+  }
+  scrollMessages();
+}
+
+function setAssistantMeta(row, provider, grounded) {
+  const meta = row.querySelector(".message-meta");
+  if (!meta) return;
+  meta.innerHTML = "";
+  if (provider) {
+    const badge = document.createElement("span");
+    badge.className = "provider-badge";
+    badge.textContent = providerLabel(provider);
+    meta.appendChild(badge);
+  }
+  if (grounded != null) {
+    const g = document.createElement("span");
+    g.className = grounded ? "grounded-ok" : "grounded-warn";
+    g.textContent = grounded ? "Grounded" : "Not grounded";
+    meta.appendChild(g);
+  }
+}
+
 function setBusy(busy) {
   isBusy = busy;
   sendBtn.disabled = busy;
   queryInput.disabled = busy;
+}
+
+function formatBytes(n) {
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  if (n >= 1024) return `${Math.round(n / 1024)} KB`;
+  return `${n} B`;
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function setUploadProgress(visible, percent = 0, label = "") {
+  uploadProgress.classList.toggle("hidden", !visible);
+  uploadProgressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  uploadProgressPct.textContent = `${Math.round(percent)}%`;
+  uploadProgressLabel.textContent = label || "Working…";
 }
 
 function renderCitations(citations) {
@@ -241,7 +292,6 @@ function renderCitations(citations) {
       <div class="citation-full">${escapeHtml(fullText)}</div>
       <div class="citation-hint">Click to expand full passage</div>
     `;
-
     const toggle = (e) => {
       e.stopPropagation();
       const willOpen = !card.classList.contains("expanded");
@@ -258,19 +308,17 @@ function renderCitations(citations) {
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        toggle();
+        toggle(e);
       }
     });
-
     citationsList.appendChild(card);
   }
 }
 
 function renderMeta(provider, grounded, notes) {
   metaPanel.classList.remove("hidden");
-  metaProvider.textContent = provider;
+  metaProvider.textContent = providerLabel(provider);
   metaGrounded.textContent = grounded ? "yes" : "no";
-  metaGrounded.style.color = grounded ? "var(--ok)" : "var(--warn)";
   metaNotes.innerHTML = "";
   for (const note of notes || []) {
     const li = document.createElement("li");
@@ -279,24 +327,11 @@ function renderMeta(provider, grounded, notes) {
   }
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/** Let the browser paint between token updates (otherwise one TCP chunk = instant full text). */
-function paintFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
-}
-
 async function fetchHealth() {
   try {
-    const res = await fetch("/health");
+    const res = await apiFetch("/health");
     const data = await res.json();
-    healthPill.textContent = `${data.documents} docs · ${data.chunks} chunks · ${data.llm_provider}`;
+    healthPill.textContent = `${data.documents} docs · ${data.chunks} chunks · ${data.embedding_provider}`;
     healthPill.className = "health-pill ok";
   } catch {
     healthPill.textContent = "API offline";
@@ -304,15 +339,21 @@ async function fetchHealth() {
   }
 }
 
+function canDeleteDocs() {
+  return currentUser.role === "admin";
+}
+
 async function loadDocuments() {
   try {
-    const res = await fetch("/documents");
+    const res = await apiFetch("/documents");
+    if (!res.ok) throw new Error("Failed to load documents");
     const data = await res.json();
     docList.innerHTML = "";
     allDocumentIds = data.documents.map((doc) => doc.id);
     if (!data.documents.length) {
       selectedDocIds = new Set();
-      docList.innerHTML = '<li class="muted" style="list-style:none;font-size:0.8rem">No documents yet</li>';
+      docList.innerHTML =
+        '<li class="muted doc-empty">No documents yet — upload a PDF or DOCX to start.</li>';
       return;
     }
 
@@ -330,20 +371,25 @@ async function loadDocuments() {
       const li = document.createElement("li");
       li.className = "doc-item";
       const checked = selectedDocIds.has(doc.id);
+      const meta = `${doc.num_chunks} chunks · ${formatBytes(doc.num_chars)} · ${formatDate(doc.uploaded_at)}`;
       li.innerHTML = `
         <label class="doc-scope">
           <input type="checkbox" data-id="${doc.id}" ${checked ? "checked" : ""} />
-          <span title="${escapeHtml(doc.filename)}">${escapeHtml(doc.filename)}</span>
+          <span class="doc-meta-wrap">
+            <span class="doc-name" title="${escapeHtml(doc.filename)}">${escapeHtml(doc.filename)}</span>
+            <span class="doc-meta">${escapeHtml(meta)}</span>
+          </span>
         </label>
-        <button type="button" data-id="${doc.id}" aria-label="Delete">✕</button>
+        ${
+          canDeleteDocs()
+            ? `<button type="button" data-id="${doc.id}" class="doc-delete" aria-label="Delete">✕</button>`
+            : ""
+        }
       `;
       const checkbox = li.querySelector('input[type="checkbox"]');
       checkbox.addEventListener("change", () => {
-        if (checkbox.checked) {
-          selectedDocIds.add(doc.id);
-        } else {
-          selectedDocIds.delete(doc.id);
-        }
+        if (checkbox.checked) selectedDocIds.add(doc.id);
+        else selectedDocIds.delete(doc.id);
         if (selectedDocIds.size === 0) {
           selectedDocIds = new Set(allDocumentIds);
           docList.querySelectorAll('input[type="checkbox"]').forEach((el) => {
@@ -352,7 +398,8 @@ async function loadDocuments() {
         }
         saveScopeIds();
       });
-      li.querySelector("button").addEventListener("click", () => deleteDocument(doc.id));
+      const delBtn = li.querySelector(".doc-delete");
+      if (delBtn) delBtn.addEventListener("click", () => deleteDocument(doc.id));
       docList.appendChild(li);
     }
     saveScopeIds();
@@ -364,7 +411,12 @@ async function loadDocuments() {
 async function uploadFile(file) {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/documents/upload", { method: "POST", body: form });
+  setUploadProgress(true, 2, `Uploading ${file.name}…`);
+
+  const res = await apiFetch("/documents/upload/stream", {
+    method: "POST",
+    body: form,
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const detail = err.detail;
@@ -374,23 +426,66 @@ async function uploadFile(file) {
         : Array.isArray(detail)
           ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
           : "Upload failed";
+    setUploadProgress(false);
     throw new Error(message);
   }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let doneDoc = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      const line = part.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      const event = JSON.parse(line.slice(5).trim());
+      if (event.type === "progress") {
+        const label = `${STAGE_LABELS[event.stage] || event.stage}: ${event.filename || file.name}`;
+        setUploadProgress(true, event.percent || 0, label);
+        await paintFrame();
+      } else if (event.type === "done") {
+        doneDoc = event.document;
+        setUploadProgress(true, 100, `Indexed ${file.name}`);
+      } else if (event.type === "error") {
+        setUploadProgress(false);
+        throw new Error(event.message || "Upload failed");
+      }
+    }
+  }
+
+  setUploadProgress(false);
   await loadDocuments();
   await fetchHealth();
-  appendMessage("system", `Uploaded ${file.name}`);
+  const chunks = doneDoc?.num_chunks != null ? ` (${doneDoc.num_chunks} chunks)` : "";
+  appendMessage("system", `Uploaded ${file.name}${chunks}`);
+}
+
+async function uploadFiles(fileList) {
+  const files = [...fileList];
+  for (const file of files) {
+    await uploadFile(file);
+  }
 }
 
 async function deleteDocument(id) {
   if (!confirm("Delete this document from the index?")) return;
-  const res = await fetch(`/documents/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Delete failed");
+  const res = await apiFetch(`/documents/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Delete failed");
+  }
   await loadDocuments();
   await fetchHealth();
 }
 
 async function chatNonStream(query) {
-  const res = await fetch("/chat", {
+  const res = await apiFetch("/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(chatPayload(query)),
@@ -403,7 +498,7 @@ async function chatNonStream(query) {
 }
 
 async function chatStream(query, assistantRow) {
-  const res = await fetch("/chat/stream", {
+  const res = await apiFetch("/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(chatPayload(query)),
@@ -446,7 +541,6 @@ async function chatStream(query, assistantRow) {
         fullText += event.text;
         updateAssistantMessage(assistantRow, fullText, { streaming: true });
         tokenCount += 1;
-        // Without this, many tokens from one network read paint as a single frame.
         await paintFrame();
       } else if (event.type === "done") {
         if (event.conversation_id) {
@@ -526,6 +620,197 @@ function newConversation() {
   appendMessage("system", "Started a new conversation.");
 }
 
+function showLogin(errorMsg) {
+  loginScreen.classList.remove("hidden");
+  appShell.classList.add("hidden");
+  const err = $("#login-error");
+  if (errorMsg) {
+    err.textContent = errorMsg;
+    err.classList.remove("hidden");
+  } else {
+    err.classList.add("hidden");
+  }
+}
+
+function showApp() {
+  loginScreen.classList.add("hidden");
+  appShell.classList.remove("hidden");
+}
+
+function clearSession() {
+  authToken = "";
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+function applyRoleUi() {
+  const isAdmin = currentUser.role === "admin";
+  adminPanel.classList.toggle("hidden", !isAdmin);
+  if (currentUser.auth_enabled) {
+    userBar.classList.remove("hidden");
+    userLabel.textContent = `${currentUser.username} · ${currentUser.role}`;
+  } else {
+    userBar.classList.add("hidden");
+  }
+}
+
+async function loadAdminConfig() {
+  if (currentUser.role !== "admin") return;
+  const res = await apiFetch("/admin/config");
+  if (!res.ok) return;
+  const data = await res.json();
+  const c = data.config || {};
+  const set = (id, val) => {
+    const el = $(id);
+    if (!el || val == null) return;
+    if (el.type === "checkbox") el.checked = !!val;
+    else el.value = val;
+  };
+  set("#cfg-llm_provider", c.llm_provider);
+  set("#cfg-openai_chat_model", c.openai_chat_model);
+  set("#cfg-gemini_model", c.gemini_model);
+  set("#cfg-ollama_base_url", c.ollama_base_url);
+  set("#cfg-ollama_model", c.ollama_model);
+  set("#cfg-top_k", c.top_k);
+  set("#cfg-min_score", c.min_score);
+  set("#cfg-chunk_size", c.chunk_size);
+  set("#cfg-chunk_overlap", c.chunk_overlap);
+  set("#cfg-ocr_enabled", c.ocr_enabled);
+  set("#cfg-rerank_enabled", c.rerank_enabled);
+  set("#cfg-mmr_enabled", c.mmr_enabled);
+  set("#cfg-mmr_lambda", c.mmr_lambda);
+  set("#cfg-prompt_injection_enabled", c.prompt_injection_enabled);
+  $("#cfg-openai_api_key").placeholder = c.openai_api_key_set
+    ? "set — leave blank to keep"
+    : "not set";
+  $("#cfg-gemini_api_key").placeholder = c.gemini_api_key_set
+    ? "set — leave blank to keep"
+    : "not set";
+  $("#cfg-openai_api_key").value = "";
+  $("#cfg-gemini_api_key").value = "";
+}
+
+async function saveAdminConfig(e) {
+  e.preventDefault();
+  const status = $("#config-status");
+  status.textContent = "Saving…";
+  const body = {
+    llm_provider: $("#cfg-llm_provider").value,
+    openai_chat_model: $("#cfg-openai_chat_model").value,
+    gemini_model: $("#cfg-gemini_model").value,
+    ollama_base_url: $("#cfg-ollama_base_url").value,
+    ollama_model: $("#cfg-ollama_model").value,
+    top_k: Number($("#cfg-top_k").value),
+    min_score: Number($("#cfg-min_score").value),
+    chunk_size: Number($("#cfg-chunk_size").value),
+    chunk_overlap: Number($("#cfg-chunk_overlap").value),
+    ocr_enabled: $("#cfg-ocr_enabled").checked,
+    rerank_enabled: $("#cfg-rerank_enabled").checked,
+    mmr_enabled: $("#cfg-mmr_enabled").checked,
+    mmr_lambda: Number($("#cfg-mmr_lambda").value),
+    prompt_injection_enabled: $("#cfg-prompt_injection_enabled").checked,
+  };
+  const openaiKey = $("#cfg-openai_api_key").value.trim();
+  const geminiKey = $("#cfg-gemini_api_key").value.trim();
+  if (openaiKey) body.openai_api_key = openaiKey;
+  if (geminiKey) body.gemini_api_key = geminiKey;
+
+  const res = await apiFetch("/admin/config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    status.textContent = err.detail || "Save failed";
+    return;
+  }
+  status.textContent = "Saved. New chat/upload requests use these settings.";
+  await loadAdminConfig();
+  await fetchHealth();
+}
+
+async function bootstrapSession() {
+  const statusRes = await fetch("/auth/status");
+  const status = await statusRes.json();
+
+  if (!status.auth_enabled) {
+    // Zero-login mode: synthetic admin.
+    currentUser = { username: "local", role: "admin", auth_enabled: false };
+    showApp();
+    applyRoleUi();
+    return true;
+  }
+
+  if (!authToken) {
+    showLogin();
+    return false;
+  }
+
+  const meRes = await fetch("/auth/me", {
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+  if (!meRes.ok) {
+    clearSession();
+    showLogin("Please sign in.");
+    return false;
+  }
+  const me = await meRes.json();
+  currentUser = me;
+  showApp();
+  applyRoleUi();
+  return true;
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const err = $("#login-error");
+  err.classList.add("hidden");
+  const username = $("#login-username").value.trim();
+  const password = $("#login-password").value;
+  const res = await fetch("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    err.textContent = data.detail || "Login failed";
+    err.classList.remove("hidden");
+    return;
+  }
+  const data = await res.json();
+  authToken = data.token;
+  localStorage.setItem(TOKEN_KEY, authToken);
+  currentUser = {
+    username: data.username,
+    role: data.role,
+    auth_enabled: true,
+  };
+  showApp();
+  applyRoleUi();
+  await initAppData();
+}
+
+async function handleLogout() {
+  await fetch("/auth/logout", { method: "POST" }).catch(() => {});
+  clearSession();
+  showLogin();
+}
+
+async function initAppData() {
+  applySettings();
+  syncStreamEngineUi();
+  await fetchHealth();
+  await loadDocuments();
+  if (currentUser.role === "admin") await loadAdminConfig();
+
+  if (conversationId) {
+    appendMessage("system", "Continuing previous conversation.");
+  } else {
+    appendMessage("system", "Ask a question about your uploaded documents.");
+  }
+}
+
 // Upload handlers
 uploadZone.addEventListener("click", () => fileInput.click());
 uploadZone.addEventListener("dragover", (e) => {
@@ -536,27 +821,29 @@ uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag
 uploadZone.addEventListener("drop", async (e) => {
   e.preventDefault();
   uploadZone.classList.remove("dragover");
-  const file = e.dataTransfer.files[0];
-  if (!file) return;
+  const files = e.dataTransfer.files;
+  if (!files?.length) return;
   try {
     setBusy(true);
-    await uploadFile(file);
+    await uploadFiles(files);
   } catch (err) {
     appendMessage("system", `Upload error: ${err.message}`);
+    setUploadProgress(false);
   } finally {
     setBusy(false);
   }
 });
 
 fileInput.addEventListener("change", async () => {
-  const file = fileInput.files[0];
-  if (!file) return;
+  const files = fileInput.files;
+  if (!files?.length) return;
   fileInput.value = "";
   try {
     setBusy(true);
-    await uploadFile(file);
+    await uploadFiles(files);
   } catch (err) {
     appendMessage("system", `Upload error: ${err.message}`);
+    setUploadProgress(false);
   } finally {
     setBusy(false);
   }
@@ -591,6 +878,9 @@ $("#stream-toggle").addEventListener("change", syncStreamEngineUi);
 $("#top-k-input").addEventListener("change", saveSettings);
 $("#new-chat-btn").addEventListener("click", newConversation);
 chatForm.addEventListener("submit", handleSubmit);
+$("#login-form").addEventListener("submit", handleLogin);
+$("#logout-btn").addEventListener("click", handleLogout);
+$("#config-form").addEventListener("submit", saveAdminConfig);
 
 queryInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
@@ -599,13 +889,7 @@ queryInput.addEventListener("keydown", (e) => {
   }
 });
 
-applySettings();
-syncStreamEngineUi();
-fetchHealth();
-loadDocuments();
-
-if (conversationId) {
-  appendMessage("system", "Continuing previous conversation.");
-} else {
-  appendMessage("system", "Ask a question about your uploaded documents.");
-}
+(async function boot() {
+  const ok = await bootstrapSession();
+  if (ok) await initAppData();
+})();

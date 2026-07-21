@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+
+ProgressCallback = Callable[[str, int], None]  # (stage, percent 0-100)
 
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
@@ -349,9 +352,16 @@ def ingest_file(
     chunk_size: int,
     chunk_overlap: int,
     ocr: OcrOptions | None = None,
+    on_progress: ProgressCallback | None = None,
 ) -> list[Chunk]:
     """Full pipeline for one file: extract -> clean -> chunk."""
+    def report(stage: str, percent: int) -> None:
+        if on_progress:
+            on_progress(stage, percent)
+
+    report("extracting", 20)
     pages = extract_text(path, ocr=ocr)
+    report("chunking", 50)
     chunks: list[Chunk] = []
     next_index = 0
     for page_no, raw in pages:
@@ -376,4 +386,5 @@ def ingest_file(
         raise EmptyDocumentError(
             f"No extractable text found in '{path.name}'. {hint}"
         )
+    report("chunked", 60)
     return chunks

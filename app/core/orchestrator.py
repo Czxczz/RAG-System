@@ -26,7 +26,7 @@ from app.core.conversation_memory import (
     contextualize_query,
 )
 from app.core.embeddings import EmbeddingService
-from app.core.ingestion import OcrOptions, ingest_file
+from app.core.ingestion import OcrOptions, ProgressCallback, ingest_file
 from app.core.llm_router import LLMRouter
 from app.core.prompt_injection import (
     BLOCKED_MESSAGE,
@@ -104,8 +104,19 @@ class RAGOrchestrator:
         )
 
     # ── Ingestion ────────────────────────────────────────────
-    def ingest(self, source_path: Path, filename: str, content_type: str) -> IngestResult:
+    def ingest(
+        self,
+        source_path: Path,
+        filename: str,
+        content_type: str,
+        on_progress: ProgressCallback | None = None,
+    ) -> IngestResult:
+        def report(stage: str, percent: int) -> None:
+            if on_progress:
+                on_progress(stage, percent)
+
         document_id = uuid.uuid4().hex
+        report("extracting", 15)
         chunks = ingest_file(
             source_path,
             chunk_size=self.settings.chunk_size,
@@ -116,6 +127,7 @@ class RAGOrchestrator:
                 dpi=self.settings.ocr_dpi,
                 min_chars=self.settings.ocr_min_chars_per_page,
             ),
+            on_progress=on_progress,
         )
         stored = [
             StoredChunk(
@@ -132,7 +144,9 @@ class RAGOrchestrator:
         if not stored:
             raise ValueError("No unique text chunks found after de-duplication.")
 
+        report("embedding", 70)
         vectors = self.embeddings.embed_texts([c.text for c in stored])
+        report("indexing", 90)
         self.store.add(vectors, stored)
 
         record = DocumentRecord(
@@ -144,6 +158,7 @@ class RAGOrchestrator:
             uploaded_at=dt.datetime.now(dt.timezone.utc).isoformat(),
         )
         self.registry.add(record)
+        report("done", 100)
         return IngestResult(record=record)
 
     def delete_document(self, document_id: str) -> bool:

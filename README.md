@@ -193,8 +193,11 @@ A built-in chat interface lives in `app/static/` (no npm build step).
 | Chat | Multi-turn via `conversation_id` in `localStorage` |
 | Streaming | Toggle on → `POST /chat/stream` (token-by-token) |
 | Citations | Right panel shows sources (filename + page when available) |
-| Upload | Drag-and-drop PDF (text/scanned) / DOCX / TXT / Markdown |
-| Settings | LLM mode, engine (`custom` / `langchain` / `langgraph`), `top_k` |
+| Upload | Drag-and-drop (multi-file) with progress: extract → embed → index |
+| Documents | List with chunk count, size, date; scope checkboxes; admin delete |
+| Settings | Per-chat: mode / engine / stream / `top_k` |
+| Admin config | API keys + RAG thresholds (saved to `data/runtime_settings.json`) |
+| Auth | Optional admin/user login (`AUTH_ENABLED=true`) |
 
 **Note:** streaming always uses the LangChain backend (`/chat/stream`). Turn
 streaming off to use `langgraph` or `custom` engines from the UI.
@@ -208,9 +211,14 @@ streaming off to use `langgraph` or `custom` engines from the UI.
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Status, providers, document/chunk counts |
+| `GET` | `/auth/status` | Whether login is required |
+| `POST` | `/auth/login` | Obtain session token (admin or user) |
+| `GET` | `/auth/me` | Current user + role |
+| `GET`/`PUT` | `/admin/config` | Admin-only API keys & RAG thresholds |
 | `POST` | `/documents/upload` | Upload & ingest a PDF/DOCX/MD/TXT file |
+| `POST` | `/documents/upload/stream` | Same as upload with SSE progress events |
 | `GET` | `/documents` | List ingested documents |
-| `DELETE` | `/documents/{id}` | Delete a document and its chunks |
+| `DELETE` | `/documents/{id}` | Delete a document (admin when auth on) |
 | `POST` | `/chat` | Ask a question → grounded answer + citations |
 
 ### Example
@@ -327,6 +335,9 @@ See [`.env.example`](.env.example). Key settings:
 | --- | --- | --- |
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
 | `MAX_UPLOAD_BYTES` | `26214400` (25 MB) | Reject larger uploads with HTTP 413 |
+| `AUTH_ENABLED` | `false` | Require login; admin vs user roles |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | `admin` / `admin` | Admin account (config + delete) |
+| `USER_USERNAME` / `USER_PASSWORD` | `user` / `user` | User account (chat + upload) |
 | `OCR_ENABLED` | `true` | OCR sparse/scanned PDF pages via Tesseract |
 | `OCR_LANGUAGE` | `eng` | Tesseract language pack |
 | `OCR_DPI` | `200` | Rasterization DPI for OCR |
