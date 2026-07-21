@@ -252,28 +252,6 @@ body {
   font-size: 0.72rem !important;
 }
 
-.admin-panel {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 0.75rem;
-}
-
-.admin-panel code {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 0.68rem;
-  color: #99f6e4;
-}
-
-.config-form {
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 0.15rem;
-}
-
-.config-status {
-  font-size: 0.72rem;
-  margin: 0.35rem 0 0.65rem;
-}
-
 .login-screen {
   min-height: 100vh;
   min-height: 100dvh;
@@ -409,6 +387,181 @@ body {
 
 .btn-ghost:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+.btn-secondary {
+  background: #e8ecf1;
+  color: var(--text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #dde3ea;
+}
+
+/* ── Admin configuration modal ─────────────────────────── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 100%);
+  max-height: min(90vh, 820px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+  animation: modal-in 0.18s ease-out;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.modal-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.modal-sub code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--accent-hover);
+}
+
+.modal-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.modal-close:hover {
+  background: #e2e8f0;
+  color: var(--text);
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15rem 1rem;
+  padding: 1rem 1.25rem 0.25rem;
+  overflow-y: auto;
+  max-height: min(48vh, 420px);
+}
+
+.config-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.15rem 1rem;
+  padding: 0.35rem 1.25rem 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.modal .field span {
+  color: var(--muted);
+}
+
+.modal .field select,
+.modal .field input[type="number"],
+.modal .field input[type="text"],
+.modal .field input[type="password"] {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+}
+
+.modal .field.checkbox {
+  margin-bottom: 0.35rem;
+}
+
+.modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem 1.15rem;
+  border-top: 1px solid var(--border);
+  background: #fafafa;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.config-status {
+  font-size: 0.78rem;
+  margin: 0;
+  flex: 1;
+  min-width: 140px;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .config-grid,
+  .config-toggles {
+    grid-template-columns: 1fr;
+  }
 }
 
 .chat-area {

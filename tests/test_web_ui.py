@@ -28,4 +28,5 @@ def test_ui_includes_progress_and_login():
     assert res.status_code == 200
     assert "upload-progress" in res.text
     assert "login-screen" in res.text
-    assert "admin-panel" in res.text
+    assert "admin-modal" in res.text
+    assert "open-admin-btn" in res.text

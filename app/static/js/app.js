@@ -27,7 +27,8 @@ const uploadProgressPct = $("#upload-progress-pct");
 const uploadProgressBar = $("#upload-progress-bar");
 const loginScreen = $("#login-screen");
 const appShell = $("#app-shell");
-const adminPanel = $("#admin-panel");
+const openAdminBtn = $("#open-admin-btn");
+const adminModal = $("#admin-modal");
 const userBar = $("#user-bar");
 const userLabel = $("#user-label");
 
@@ -678,13 +679,25 @@ function clearSession() {
 
 function applyRoleUi() {
   const isAdmin = currentUser.role === "admin";
-  adminPanel.classList.toggle("hidden", !isAdmin);
+  openAdminBtn.classList.toggle("hidden", !isAdmin);
   if (currentUser.auth_enabled) {
     userBar.classList.remove("hidden");
     userLabel.textContent = `${currentUser.username} · ${currentUser.role}`;
   } else {
     userBar.classList.add("hidden");
   }
+}
+
+function openAdminModal() {
+  adminModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  $("#config-status").textContent = "";
+  loadAdminConfig();
+}
+
+function closeAdminModal() {
+  adminModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
 }
 
 async function loadAdminConfig() {
@@ -761,6 +774,7 @@ async function saveAdminConfig(e) {
   status.textContent = "Saved. New chat/upload requests use these settings.";
   await loadAdminConfig();
   await fetchHealth();
+  setTimeout(() => closeAdminModal(), 700);
 }
 
 async function bootstrapSession() {
@@ -915,6 +929,15 @@ chatForm.addEventListener("submit", handleSubmit);
 $("#login-form").addEventListener("submit", handleLogin);
 $("#logout-btn").addEventListener("click", handleLogout);
 $("#config-form").addEventListener("submit", saveAdminConfig);
+openAdminBtn.addEventListener("click", openAdminModal);
+$("#close-admin-btn").addEventListener("click", closeAdminModal);
+$("#cancel-admin-btn").addEventListener("click", closeAdminModal);
+$("#admin-modal-backdrop").addEventListener("click", closeAdminModal);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !adminModal.classList.contains("hidden")) {
+    closeAdminModal();
+  }
+});
 
 queryInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
