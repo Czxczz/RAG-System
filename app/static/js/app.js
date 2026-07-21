@@ -161,6 +161,7 @@ function formatAssistantHtml(text) {
       }
       return `<p>${l}</p>`;
     })
+    .filter(Boolean)
     .join("");
 }
 
@@ -176,23 +177,87 @@ function paintFrame() {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-function appendMessage(role, text, opts = {}) {
-  const row = document.createElement("div");
-  row.className = `message ${role}${opts.extraClass ? " " + opts.extraClass : ""}`;
-  const content = document.createElement("div");
-  content.className = "message-content";
-  if (role === "assistant" && opts.markdown !== false) {
-    content.innerHTML = formatAssistantHtml(text);
+function setMessageContent(contentEl, text, markdown) {
+  if (markdown) {
+    contentEl.innerHTML = formatAssistantHtml(text);
   } else {
-    content.textContent = text;
+    contentEl.textContent = text;
   }
-  row.appendChild(content);
-  if (role === "assistant") {
-    const meta = document.createElement("div");
-    meta.className = "message-meta";
-    row.appendChild(meta);
-    setAssistantMeta(row, opts.provider, opts.grounded);
+}
+
+function setAssistantMeta(row, provider, grounded) {
+  const meta = row.querySelector(".message-meta");
+  if (!meta) return;
+  meta.innerHTML = "";
+  if (provider && provider !== "none") {
+    const badge = document.createElement("span");
+    badge.className = `provider-badge ${provider}`;
+    badge.textContent = providerLabel(provider);
+    meta.appendChild(badge);
   }
+  if (grounded !== null && grounded !== undefined) {
+    const badge = document.createElement("span");
+    badge.className = `grounded-badge ${grounded ? "yes" : "no"}`;
+    badge.textContent = grounded ? "Grounded" : "Unverified";
+    meta.appendChild(badge);
+  }
+}
+
+function updateAssistantMessage(row, text, { provider, grounded, streaming } = {}) {
+  const content = row.querySelector(".message-content");
+  const bubble = row.querySelector(".message-bubble");
+  if (content) {
+    setMessageContent(content, text, true);
+  }
+  if (provider) {
+    row.classList.add(`provider-${provider}`);
+    setAssistantMeta(row, provider, grounded);
+  }
+  if (streaming === false && bubble) {
+    bubble.classList.remove("streaming");
+  }
+  scrollMessages();
+}
+
+function appendMessage(role, text, options = {}) {
+  const extraClass =
+    typeof options === "string" ? options : options.extraClass || "";
+  const opts = typeof options === "string" ? { extraClass } : options;
+  const { provider = null, grounded = null, markdown = role === "assistant" } = opts;
+
+  const row = document.createElement("div");
+  row.className = `message-row ${role}`;
+  if (provider) {
+    row.classList.add(`provider-${provider}`);
+  }
+
+  if (role === "system") {
+    const el = document.createElement("div");
+    el.className = "message-system";
+    el.textContent = text;
+    row.appendChild(el);
+  } else if (role === "user") {
+    row.innerHTML = `
+      <div class="message-avatar user" aria-hidden="true">You</div>
+      <div class="message-bubble user">
+        <div class="message-content"></div>
+      </div>`;
+    row.querySelector(".message-content").textContent = text;
+  } else {
+    row.innerHTML = `
+      <div class="message-avatar assistant" aria-hidden="true">◇</div>
+      <div class="message-bubble assistant ${extraClass}">
+        <div class="message-meta"></div>
+        <div class="message-content"></div>
+      </div>`;
+    setAssistantMeta(row, provider, grounded);
+    setMessageContent(
+      row.querySelector(".message-content"),
+      text,
+      markdown && text.length > 0
+    );
+  }
+
   messagesEl.appendChild(row);
   scrollMessages();
   return row;
@@ -200,38 +265,6 @@ function appendMessage(role, text, opts = {}) {
 
 function createAssistantMessage() {
   return appendMessage("assistant", "", { extraClass: "streaming", markdown: false });
-}
-
-function updateAssistantMessage(row, text, opts = {}) {
-  const content = row.querySelector(".message-content");
-  if (opts.streaming) {
-    content.textContent = text;
-  } else {
-    content.innerHTML = formatAssistantHtml(text);
-    row.classList.remove("streaming");
-  }
-  if (opts.provider != null || opts.grounded != null) {
-    setAssistantMeta(row, opts.provider, opts.grounded);
-  }
-  scrollMessages();
-}
-
-function setAssistantMeta(row, provider, grounded) {
-  const meta = row.querySelector(".message-meta");
-  if (!meta) return;
-  meta.innerHTML = "";
-  if (provider) {
-    const badge = document.createElement("span");
-    badge.className = "provider-badge";
-    badge.textContent = providerLabel(provider);
-    meta.appendChild(badge);
-  }
-  if (grounded != null) {
-    const g = document.createElement("span");
-    g.className = grounded ? "grounded-ok" : "grounded-warn";
-    g.textContent = grounded ? "Grounded" : "Not grounded";
-    meta.appendChild(g);
-  }
 }
 
 function setBusy(busy) {
@@ -317,8 +350,9 @@ function renderCitations(citations) {
 
 function renderMeta(provider, grounded, notes) {
   metaPanel.classList.remove("hidden");
-  metaProvider.textContent = providerLabel(provider);
+  metaProvider.textContent = provider;
   metaGrounded.textContent = grounded ? "yes" : "no";
+  metaGrounded.style.color = grounded ? "var(--ok)" : "var(--warn)";
   metaNotes.innerHTML = "";
   for (const note of notes || []) {
     const li = document.createElement("li");
