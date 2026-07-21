@@ -794,12 +794,29 @@ async function loadAdminConfig() {
   set("#cfg-prompt_injection_enabled", c.prompt_injection_enabled);
   $("#cfg-openai_api_key").placeholder = c.openai_api_key_set
     ? "set — leave blank to keep"
-    : "not set";
+    : "not set — paste OpenAI sk-… key";
   $("#cfg-gemini_api_key").placeholder = c.gemini_api_key_set
     ? "set — leave blank to keep"
-    : "not set";
+    : "not set — paste Gemini API key";
   $("#cfg-openai_api_key").value = "";
   $("#cfg-gemini_api_key").value = "";
+
+  // Keep sidebar chat mode aligned with admin default provider.
+  if (c.llm_provider && $("#mode-select")) {
+    const mode = c.llm_provider;
+    if ([...$("#mode-select").options].some((o) => o.value === mode)) {
+      $("#mode-select").value = mode;
+      saveSettings();
+    }
+  }
+}
+
+function looksLikeGeminiKey(key) {
+  return /^(AQ\.|AIza)/i.test(key);
+}
+
+function looksLikeOpenAIKey(key) {
+  return /^sk-/i.test(key);
 }
 
 async function saveAdminConfig(e) {
@@ -822,8 +839,28 @@ async function saveAdminConfig(e) {
     mmr_lambda: Number($("#cfg-mmr_lambda").value),
     prompt_injection_enabled: $("#cfg-prompt_injection_enabled").checked,
   };
-  const openaiKey = $("#cfg-openai_api_key").value.trim();
-  const geminiKey = $("#cfg-gemini_api_key").value.trim();
+  let openaiKey = $("#cfg-openai_api_key").value.trim();
+  let geminiKey = $("#cfg-gemini_api_key").value.trim();
+
+  // Prevent saving masked placeholders or putting the wrong key in the wrong box.
+  if (openaiKey.includes("•")) openaiKey = "";
+  if (geminiKey.includes("•")) geminiKey = "";
+  if (openaiKey && looksLikeGeminiKey(openaiKey) && !geminiKey) {
+    geminiKey = openaiKey;
+    openaiKey = "";
+    if (body.llm_provider === "auto" || body.llm_provider === "openai") {
+      body.llm_provider = "gemini";
+      $("#cfg-llm_provider").value = "gemini";
+    }
+  }
+  if (geminiKey && looksLikeOpenAIKey(geminiKey) && !openaiKey) {
+    openaiKey = geminiKey;
+    geminiKey = "";
+    if (body.llm_provider === "auto" || body.llm_provider === "gemini") {
+      body.llm_provider = "openai";
+      $("#cfg-llm_provider").value = "openai";
+    }
+  }
   if (openaiKey) body.openai_api_key = openaiKey;
   if (geminiKey) body.gemini_api_key = geminiKey;
 
@@ -837,10 +874,19 @@ async function saveAdminConfig(e) {
     status.textContent = err.detail || "Save failed";
     return;
   }
-  status.textContent = "Saved. New chat/upload requests use these settings.";
+  const data = await res.json();
+  status.textContent = data.message || "Saved.";
+
+  // Apply default provider to the chat mode dropdown immediately.
+  const provider = body.llm_provider || "auto";
+  if ([...$("#mode-select").options].some((o) => o.value === provider)) {
+    $("#mode-select").value = provider;
+    saveSettings();
+  }
+
   await loadAdminConfig();
   await fetchHealth();
-  setTimeout(() => closeAdminModal(), 700);
+  setTimeout(() => closeAdminModal(), 1200);
 }
 
 async function bootstrapSession() {

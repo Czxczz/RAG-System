@@ -69,11 +69,26 @@ def save_overrides(data_dir: Path, updates: dict[str, Any]) -> dict[str, Any]:
         # Empty string for secrets means "leave unchanged".
         if key in SECRET_KEYS and value in ("", None):
             continue
+        # Ignore accidental paste of masked placeholder values from the UI.
+        if key in SECRET_KEYS and isinstance(value, str) and "•" in value:
+            continue
         current[key] = value
     path = runtime_settings_path(data_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return current
+
+
+def describe_key_status(settings) -> str:
+    """Short human-readable summary of which LLM keys are active."""
+    parts: list[str] = []
+    if settings.openai_api_key:
+        parts.append("OpenAI key set")
+    if settings.gemini_api_key:
+        parts.append("Gemini key set")
+    if not parts:
+        return "No cloud API keys set (Ollama/extractive only)."
+    return "; ".join(parts) + f". Default provider: {settings.llm_provider}."
 
 
 def mask_secret(value: str) -> str:

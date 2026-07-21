@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=20260721d" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260721e" />
 </head>
 <body>
   <!-- Login gate (shown only when AUTH_ENABLED=true) -->
@@ -138,7 +138,11 @@
       <header class="modal-header">
         <div>
           <h2 id="admin-modal-title">Admin configuration</h2>
-          <p class="modal-sub">API keys &amp; RAG thresholds. Saved to <code>data/runtime_settings.json</code>.</p>
+          <p class="modal-sub">
+            API keys &amp; RAG thresholds. Saved to <code>data/runtime_settings.json</code>.
+            After saving, set sidebar <strong>LLM mode</strong> to match (or use <strong>auto</strong>).
+            Key fields stay blank for security — placeholder shows if a key is already set.
+          </p>
         </div>
         <button type="button" id="close-admin-btn" class="modal-close" aria-label="Close">✕</button>
       </header>
@@ -228,6 +232,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=20260721d" defer></script>
+  <script src="/static/js/app.js?v=20260721e" defer></script>
 </body>
 </html>

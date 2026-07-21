@@ -47,7 +47,18 @@ class LLMRouter:
         mode = (mode or "auto").lower()
         if mode in {"openai", "gemini", "ollama", "extractive"}:
             return mode
-        # auto
+
+        # auto — honor Admin config ``llm_provider`` when that provider is usable.
+        preferred = (self.settings.llm_provider or "auto").lower()
+        if preferred == "openai" and self._openai_available():
+            return "openai"
+        if preferred == "gemini" and self._gemini_available():
+            return "gemini"
+        if preferred == "ollama":
+            return "ollama" if self._ollama_available() else "extractive"
+        if preferred == "extractive":
+            return "extractive"
+
         if self._openai_available():
             return "openai"
         if self._gemini_available():

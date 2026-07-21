@@ -28,7 +28,7 @@ from app.core.ingestion import (
     UnsupportedFormatError,
 )
 from app.core.orchestrator import RAGOrchestrator
-from app.core.runtime_config import public_config_view, save_overrides
+from app.core.runtime_config import describe_key_status, public_config_view, save_overrides
 from app.dependencies import (
     apply_runtime_settings,
     get_conversation_store,
@@ -230,9 +230,14 @@ def update_config(
     settings = get_settings()
     save_overrides(settings.data_dir, updates)
     apply_runtime_settings()
+    refreshed = get_settings()
     return ConfigResponse(
-        config=public_config_view(get_settings()),
-        message="Configuration saved. Retrieval/LLM settings apply to new requests.",
+        config=public_config_view(refreshed),
+        message=(
+            "Configuration saved and applied. "
+            + describe_key_status(refreshed)
+            + " Set chat LLM mode to match (or use auto)."
+        ),
     )
 
 

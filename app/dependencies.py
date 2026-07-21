@@ -68,6 +68,7 @@ def apply_runtime_settings() -> None:
     orch.settings = settings
     orch.llm = LLMRouter(settings)
     orch.rewriter.settings = settings
+    orch.rewriter.llm = orch.llm
     orch.query_engine.settings = settings
     # Keep LangChain / LangGraph wrappers on the same settings object.
     try:
