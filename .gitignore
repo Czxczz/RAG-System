@@ -16,7 +16,7 @@ env/
 .env
 
 # Runtime data (uploaded docs + FAISS index)
-data/
+data/**
 !data/.gitkeep
 
 # Model cache

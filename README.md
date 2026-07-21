@@ -127,6 +127,33 @@ scripts/
 
 ---
 
+## Requirements & compatibility
+
+| Item | Supported |
+| --- | --- |
+| **Python** | **3.11.x** (3.11+ recommended; Dockerfile uses `python:3.11-slim`) |
+| **OS** | macOS, Linux, Windows (via **Docker Desktop** recommended) |
+| **Docker** | Docker Engine / Desktop with Compose v2 |
+| **RAM** | ~8 GB minimum for local embeddings + reranker; more if running Ollama locally |
+| **Optional LLM** | OpenAI and/or Gemini API keys, or [Ollama](https://ollama.com) on the host |
+| **Optional OCR** | Tesseract (bundled in Docker; install locally only for Option B) |
+
+**Windows (local Python):** use PowerShell / cmd:
+
+```bat
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Install Tesseract from the [UB Mannheim builds](https://github.com/UB-Mannheim/tesseract/wiki) if you need scanned-PDF OCR outside Docker.
+
+**Linux + Ollama in Docker:** `docker-compose.yml` maps `host.docker.internal` via `extra_hosts` so the container can reach Ollama on the host. Ensure Ollama listens on `0.0.0.0:11434` (or set `OLLAMA_BASE_URL` to your host IP).
+
+**Delivery tip (marketplace sales):** ship `.env.example`, never a filled `.env` with real API keys. Buyers copy `.env.example` → `.env`.
+
+---
+
 ## Quickstart
 
 ### Option A — Docker (recommended for buyers)
@@ -146,12 +173,24 @@ Model downloads are cached in a Docker volume (`model-cache`) so restarts are fa
 
 ### Option B — Local Python
 
+Requires **Python 3.11+**.
+
 #### 1. Install
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+For scanned PDF OCR (optional):
+
+```bash
+# macOS
+brew install tesseract
+
+# Debian / Ubuntu
+sudo apt install tesseract-ocr
 ```
 
 #### 2. Configure (optional)
@@ -336,6 +375,7 @@ See [`.env.example`](.env.example). Key settings:
 | `EMBEDDING_PROVIDER` | `local` | `local` (private) or `openai` |
 | `MAX_UPLOAD_BYTES` | `26214400` (25 MB) | Reject larger uploads with HTTP 413 |
 | `AUTH_ENABLED` | `false` | Require login; admin vs user roles |
+| `AUTH_TOKEN_TTL_SECONDS` | `86400` | Session token lifetime (seconds) |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | `admin` / `admin` | Admin account (config + delete) |
 | `USER_USERNAME` / `USER_PASSWORD` | `user` / `user` | User account (chat + upload) |
 | `OCR_ENABLED` | `true` | OCR sparse/scanned PDF pages via Tesseract |

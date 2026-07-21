@@ -17,8 +17,13 @@ services:
     environment:
       # Ensure paths resolve inside the container even if .env uses host paths.
       DATA_DIR: /app/data
-      # Ollama on the host (Mac/Windows Docker Desktop): use host.docker.internal
+      # Ollama on the host. Mac/Windows Docker Desktop: host.docker.internal
+      # Linux: enabled via extra_hosts below (host-gateway).
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      # Required on Linux so the container can reach Ollama on the host.
+      # Harmless on Docker Desktop (Mac/Windows).
+      - "host.docker.internal:host-gateway"
     volumes:
       # Persist uploads + FAISS index across restarts
       - ./data:/app/data

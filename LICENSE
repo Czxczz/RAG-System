@@ -1,0 +1,31 @@
+PrivateRAG Source Code License (Purchaser License)
+
+Copyright (c) 2026 PrivateRAG contributors / project owner
+
+This license applies to purchasers of this source code package
+(for example via freelance marketplaces such as Upwork or Fiverr).
+
+1. Grant of rights
+   You may use, modify, and deploy this software for your own projects,
+   internal tools, and client work.
+
+2. Restrictions
+   You may not resell, republish, or redistribute the source code
+   (modified or unmodified) as a competing product, template, or
+   marketplace listing without prior written permission from the owner.
+
+3. Secrets and credentials
+   Do not redistribute files that contain API keys or passwords
+   (especially a filled-in `.env`). Deliveries should include
+   `.env.example` only; each deployer creates their own `.env`.
+
+4. No warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM USE OF THE SOFTWARE.
+
+5. Third-party components
+   Dependencies listed in `requirements.txt` and system packages
+   (for example Tesseract OCR) remain under their own licenses.
