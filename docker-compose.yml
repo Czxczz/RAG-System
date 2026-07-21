@@ -22,6 +22,8 @@ services:
     volumes:
       # Persist uploads + FAISS index across restarts
       - ./data:/app/data
+      # Live-reload Web UI without rebuilding the image
+      - ./app/static:/app/app/static
       # Cache downloaded embedding / reranker models
       - model-cache:/cache
     restart: unless-stopped

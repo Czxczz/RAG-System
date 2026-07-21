@@ -659,13 +659,34 @@ body.modal-open {
   font-size: 0.85rem;
 }
 
+.message-avatar.assistant.provider-openai {
+  background: rgba(16, 163, 127, 0.18);
+  color: #0d7a5f;
+}
+
+.message-avatar.assistant.provider-gemini {
+  background: rgba(66, 133, 244, 0.18);
+  color: #1a5dc8;
+}
+
+.message-avatar.assistant.provider-ollama {
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+
+.message-avatar.assistant.provider-extractive,
+.message-avatar.assistant.provider-none {
+  background: #e8ecf1;
+  color: #64748b;
+}
+
 .message-bubble {
   flex: 1;
   min-width: 0;
   padding: 0.85rem 1rem;
   border-radius: var(--radius);
-  line-height: 1.6;
-  font-size: 0.94rem;
+  line-height: 1.65;
+  font-size: 0.95rem;
   word-break: break-word;
   box-shadow: var(--shadow);
 }
@@ -680,31 +701,36 @@ body.modal-open {
   background: var(--assistant-bg);
   border: 1px solid var(--border);
   border-bottom-left-radius: 4px;
-  border-left-width: 3px;
+  border-left-width: 4px;
   border-left-color: #c5cdd6;
 }
 
 .message-row.provider-openai .message-bubble.assistant {
   border-left-color: #10a37f;
+  background: linear-gradient(180deg, #f3fbf8 0%, #ffffff 48px);
 }
 
 .message-row.provider-gemini .message-bubble.assistant {
   border-left-color: #4285f4;
+  background: linear-gradient(180deg, #f3f7fe 0%, #ffffff 48px);
 }
 
 .message-row.provider-ollama .message-bubble.assistant {
   border-left-color: #f59e0b;
+  background: linear-gradient(180deg, #fff9ef 0%, #ffffff 48px);
 }
 
-.message-row.provider-extractive .message-bubble.assistant {
+.message-row.provider-extractive .message-bubble.assistant,
+.message-row.provider-none .message-bubble.assistant {
   border-left-color: #94a3b8;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 48px);
 }
 
 .message-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.55rem;
 }
 
 .message-meta:empty {
@@ -715,28 +741,29 @@ body.modal-open {
 .grounded-badge {
   font-size: 0.68rem;
   font-weight: 600;
-  padding: 0.15rem 0.45rem;
+  padding: 0.18rem 0.5rem;
   border-radius: 999px;
   letter-spacing: 0.02em;
 }
 
 .provider-badge.openai {
-  background: rgba(16, 163, 127, 0.12);
+  background: rgba(16, 163, 127, 0.14);
   color: #0d7a5f;
 }
 
 .provider-badge.gemini {
-  background: rgba(66, 133, 244, 0.12);
+  background: rgba(66, 133, 244, 0.14);
   color: #1a5dc8;
 }
 
 .provider-badge.ollama {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.16);
   color: #b45309;
 }
 
-.provider-badge.extractive {
-  background: rgba(148, 163, 184, 0.2);
+.provider-badge.extractive,
+.provider-badge.none {
+  background: rgba(148, 163, 184, 0.22);
   color: #64748b;
 }
 
@@ -760,11 +787,49 @@ body.modal-open {
 }
 
 .message-content p {
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.65rem;
 }
 
 .message-content p:last-child {
   margin-bottom: 0;
+}
+
+.message-content .md-h {
+  margin: 0.15rem 0 0.55rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.message-content h2.md-h {
+  font-size: 1.12rem;
+}
+
+.message-content h3.md-h {
+  font-size: 1.02rem;
+}
+
+.message-content h4.md-h {
+  font-size: 0.95rem;
+}
+
+.message-content .md-spacer {
+  height: 0.45rem;
+}
+
+.message-content .md-hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 0.65rem 0;
+}
+
+.message-content .md-quote {
+  margin: 0.35rem 0 0.65rem;
+  padding: 0.45rem 0.75rem;
+  border-left: 3px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 0 8px 8px 0;
 }
 
 .message-content strong {

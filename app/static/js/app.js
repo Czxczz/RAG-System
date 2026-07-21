@@ -140,30 +140,65 @@ function providerLabel(provider) {
   return labels[provider] || provider;
 }
 
+function providerAvatar(provider) {
+  const icons = {
+    openai: "✦",
+    gemini: "✧",
+    ollama: "◎",
+    extractive: "◇",
+    none: "◇",
+  };
+  return icons[provider] || "◇";
+}
+
 function formatAssistantHtml(text) {
-  const lines = escapeHtml(text).split("\n");
-  return lines
-    .map((line) => {
-      let l = line;
-      l = l.replace(
-        /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g,
-        '<sup class="cite-ref">[$1]</sup>'
+  const lines = escapeHtml(text || "").split("\n");
+  const html = [];
+  for (const line of lines) {
+    let l = line;
+    if (/^\s*---+\s*$/.test(l)) {
+      html.push('<hr class="md-hr" />');
+      continue;
+    }
+    if (!l.trim()) {
+      html.push('<div class="md-spacer"></div>');
+      continue;
+    }
+    l = l.replace(
+      /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g,
+      '<sup class="cite-ref">[$1]</sup>'
+    );
+    l = l.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    l = l.replace(/`([^`]+)`/g, "<code>$1</code>");
+    if (/^###\s+/.test(l)) {
+      html.push(`<h4 class="md-h">${l.replace(/^###\s+/, "")}</h4>`);
+      continue;
+    }
+    if (/^##\s+/.test(l)) {
+      html.push(`<h3 class="md-h">${l.replace(/^##\s+/, "")}</h3>`);
+      continue;
+    }
+    if (/^#\s+/.test(l)) {
+      html.push(`<h2 class="md-h">${l.replace(/^#\s+/, "")}</h2>`);
+      continue;
+    }
+    if (/^[-*]\s+/.test(l)) {
+      html.push(
+        `<div class="md-li"><span class="md-bullet">•</span><span>${l.replace(/^[-*]\s+/, "")}</span></div>`
       );
-      l = l.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-      l = l.replace(/`([^`]+)`/g, "<code>$1</code>");
-      if (/^[-*]\s+/.test(l)) {
-        return `<div class="md-li"><span class="md-bullet">•</span><span>${l.replace(/^[-*]\s+/, "")}</span></div>`;
-      }
-      if (/^\d+\.\s+/.test(l)) {
-        return `<div class="md-li num">${l}</div>`;
-      }
-      if (!l.trim()) {
-        return "";
-      }
-      return `<p>${l}</p>`;
-    })
-    .filter(Boolean)
-    .join("");
+      continue;
+    }
+    if (/^\d+\.\s+/.test(l)) {
+      html.push(`<div class="md-li num">${l}</div>`);
+      continue;
+    }
+    if (/^>\s+/.test(l)) {
+      html.push(`<blockquote class="md-quote">${l.replace(/^>\s+/, "")}</blockquote>`);
+      continue;
+    }
+    html.push(`<p>${l}</p>`);
+  }
+  return html.join("");
 }
 
 function escapeHtml(str) {
@@ -190,7 +225,7 @@ function setAssistantMeta(row, provider, grounded) {
   const meta = row.querySelector(".message-meta");
   if (!meta) return;
   meta.innerHTML = "";
-  if (provider && provider !== "none") {
+  if (provider) {
     const badge = document.createElement("span");
     badge.className = `provider-badge ${provider}`;
     badge.textContent = providerLabel(provider);
@@ -204,18 +239,45 @@ function setAssistantMeta(row, provider, grounded) {
   }
 }
 
+function applyProviderChrome(row, provider) {
+  if (!provider) return;
+  const known = ["openai", "gemini", "ollama", "extractive", "none"];
+  for (const p of known) row.classList.remove(`provider-${p}`);
+  row.classList.add(`provider-${provider}`);
+
+  const avatar = row.querySelector(".message-avatar.assistant");
+  if (avatar) {
+    avatar.textContent = providerAvatar(provider);
+    avatar.className = `message-avatar assistant provider-${provider}`;
+  }
+  setAssistantMeta(
+    row,
+    provider,
+    row.dataset.grounded === "true"
+      ? true
+      : row.dataset.grounded === "false"
+        ? false
+        : undefined
+  );
+}
+
 function updateAssistantMessage(row, text, { provider, grounded, streaming } = {}) {
   const content = row.querySelector(".message-content");
   const bubble = row.querySelector(".message-bubble");
   if (content) {
-    setMessageContent(content, text, true);
+    // While streaming, keep plain text for speed; format when complete.
+    setMessageContent(content, text, streaming !== true);
   }
   if (provider) {
-    row.classList.add(`provider-${provider}`);
+    if (grounded !== null && grounded !== undefined) {
+      row.dataset.grounded = grounded ? "true" : "false";
+    }
+    applyProviderChrome(row, provider);
     setAssistantMeta(row, provider, grounded);
   }
   if (streaming === false && bubble) {
     bubble.classList.remove("streaming");
+    if (content) setMessageContent(content, text, true);
   }
   scrollMessages();
 }
@@ -231,6 +293,9 @@ function appendMessage(role, text, options = {}) {
   if (provider) {
     row.classList.add(`provider-${provider}`);
   }
+  if (grounded !== null && grounded !== undefined) {
+    row.dataset.grounded = grounded ? "true" : "false";
+  }
 
   if (role === "system") {
     const el = document.createElement("div");
@@ -245,8 +310,9 @@ function appendMessage(role, text, options = {}) {
       </div>`;
     row.querySelector(".message-content").textContent = text;
   } else {
+    const icon = providerAvatar(provider || "none");
     row.innerHTML = `
-      <div class="message-avatar assistant" aria-hidden="true">◇</div>
+      <div class="message-avatar assistant${provider ? ` provider-${provider}` : ""}" aria-hidden="true">${icon}</div>
       <div class="message-bubble assistant ${extraClass}">
         <div class="message-meta"></div>
         <div class="message-content"></div>
