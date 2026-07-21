@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  PrivateRAG Web UI
+  Copyright (c) 2026 PrivateRAG. All rights reserved.
+  See LICENSE in the project root (single internal use; no resale).
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=20260721e" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260721f" />
 </head>
 <body>
   <!-- Login gate (shown only when AUTH_ENABLED=true) -->
@@ -31,6 +36,7 @@
       <p id="login-error" class="login-error hidden"></p>
       <button type="submit" class="btn btn-primary login-btn">Sign in</button>
       <p class="login-hint muted">Admin can manage config &amp; delete docs. Users can chat &amp; upload.</p>
+      <p class="login-copyright muted">© 2026 PrivateRAG. All rights reserved.</p>
     </form>
   </div>
 
@@ -104,6 +110,10 @@
         <button type="button" id="new-chat-btn" class="btn btn-ghost">New conversation</button>
         <button type="button" id="open-admin-btn" class="btn btn-ghost hidden">Admin configuration</button>
       </section>
+
+      <p class="sidebar-copyright" title="Single internal use license; you pay your own API and hosting costs.">
+        © 2026 PrivateRAG. All rights reserved.
+      </p>
     </aside>
 
     <main class="chat-area">
@@ -232,6 +242,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=20260721e" defer></script>
+  <script src="/static/js/app.js?v=20260721f" defer></script>
 </body>
 </html>

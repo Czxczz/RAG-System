@@ -1,31 +1,51 @@
 PrivateRAG Source Code License (Purchaser License)
 
-Copyright (c) 2026 PrivateRAG contributors / project owner
+Copyright (c) 2026 PrivateRAG. All rights reserved.
 
 This license applies to purchasers of this source code package
 (for example via freelance marketplaces such as Upwork or Fiverr).
 
-1. Grant of rights
-   You may use, modify, and deploy this software for your own projects,
-   internal tools, and client work.
+1. Grant of rights (single internal use)
+   Subject to this license, you (the purchaser) receive a non-exclusive,
+   non-transferable right to use, modify, and deploy this software for
+   a single organization / business entity for internal purposes only
+   (including internal tools used by your employees and contractors).
 
 2. Restrictions
-   You may not resell, republish, or redistribute the source code
-   (modified or unmodified) as a competing product, template, or
-   marketplace listing without prior written permission from the owner.
+   You may not:
+   - Resell, republish, sublicense, or redistribute the source code
+     (modified or unmodified) to third parties;
+   - Offer this software (or a derivative) as a competing product,
+     template, starter kit, or marketplace listing;
+   - Share the package with another organization as if they were a
+     separate licensee.
 
-3. Secrets and credentials
+   Deployment of a private instance for your own organization's users
+   is allowed. Transferring the source pack itself is not.
+
+3. Fees and operating costs (disclaimer)
+   The purchase of this source package is a one-time delivery of code.
+   There are no ongoing license fees, SaaS subscriptions, or hosting
+   charges from the seller for this package.
+
+   You are solely responsible for all third-party and infrastructure
+   costs of running the software, including but not limited to:
+   cloud hosting, compute, storage, bandwidth, and LLM / embedding
+   API usage (OpenAI, Google Gemini, or other providers), plus any
+   local hardware used for Ollama or similar runtimes.
+
+4. Secrets and credentials
    Do not redistribute files that contain API keys or passwords
-   (especially a filled-in `.env`). Deliveries should include
-   `.env.example` only; each deployer creates their own `.env`.
+   (especially a filled-in `.env`). Deliveries include `.env.example`
+   only; each deployer creates their own `.env`.
 
-4. No warranty
+5. No warranty
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
    CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM USE OF THE SOFTWARE.
 
-5. Third-party components
+6. Third-party components
    Dependencies listed in `requirements.txt` and system packages
    (for example Tesseract OCR) remain under their own licenses.

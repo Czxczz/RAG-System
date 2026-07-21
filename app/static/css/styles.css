@@ -1,3 +1,7 @@
+/* PrivateRAG styles
+ * Copyright (c) 2026 PrivateRAG. All rights reserved.
+ */
+
 :root {
   --bg: #f4f2ed;
   --surface: #ffffff;
@@ -73,6 +77,15 @@ body {
   margin: 0.15rem 0 0;
   font-size: 0.8rem;
   color: var(--sidebar-muted);
+}
+
+.sidebar-copyright {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--sidebar-muted);
+  opacity: 0.85;
 }
 
 .health-pill {
@@ -310,6 +323,12 @@ body {
   margin: 0.85rem 0 0;
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+.login-copyright {
+  margin: 0.5rem 0 0;
+  font-size: 0.68rem;
+  text-align: center;
 }
 
 .field {

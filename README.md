@@ -154,22 +154,39 @@ Install Tesseract from the [UB Mannheim builds](https://github.com/UB-Mannheim/t
 
 ---
 
-## Quickstart
+## Step-by-step setup guide
+
+Follow **Option A** (Docker) unless you specifically need a local Python
+dev environment.
 
 ### Option A — Docker (recommended for buyers)
 
-```bash
-cp .env.example .env
-# Add OPENAI_API_KEY and/or GEMINI_API_KEY in .env (optional; extractive works without)
+1. **Prerequisites:** Docker Desktop (or Docker Engine + Compose v2), ~8 GB RAM.
+2. **Configure env:**
 
-docker compose up --build
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-Open **http://localhost:8000/**. Uploads and the FAISS index persist in `./data`.
-Model downloads are cached in a Docker volume (`model-cache`) so restarts are fast.
+   Optionally add `OPENAI_API_KEY` and/or `GEMINI_API_KEY`. Without keys,
+   extractive answers and local embeddings still work.
+3. **Start:**
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Open** [http://localhost:8000/](http://localhost:8000/).
+5. **Upload** a PDF/DOCX/TXT/MD, then ask a question in the chat UI.
+
+Uploads and the FAISS index persist in `./data`. Model downloads are cached
+in a Docker volume (`model-cache`) so restarts are fast.
 
 > First start downloads the local embedding / reranker models (a few hundred MB)
 > and can take several minutes.
+
+**After backend code changes:** rebuild with `docker compose up --build -d`
+(static UI files can hot-reload via the bind mount without a rebuild).
 
 ### Option B — Local Python
 
@@ -623,3 +640,81 @@ Add your own cases by copying the format in `eval/dataset.ec2.json`.
 pip install pytest
 pytest -q
 ```
+
+---
+
+## FAQ & troubleshooting
+
+### General
+
+**Do I need an API key to try it?**  
+No. Local embeddings + extractive answers work with no keys. For higher-quality
+answers, add OpenAI and/or Gemini keys, or run Ollama locally.
+
+**Who pays for OpenAI / Gemini / hosting?**  
+You do. This package is a **one-time source delivery** with **no ongoing fees**
+from the seller. Cloud hosting and LLM API / token usage are billed by those
+providers to your accounts. See [License & disclaimer](#license--disclaimer).
+
+**Can I resell or share this source pack?**  
+No. The license is **single internal use** for one organization. See `LICENSE`.
+
+### Setup
+
+**First Docker start is slow / stuck downloading models**  
+Expected. Embedding and reranker weights download on first boot (hundreds of MB).
+Later starts reuse the `model-cache` volume.
+
+**Port 8000 already in use**  
+Stop the other process, or change the published port in `docker-compose.yml`
+(e.g. `"8001:8000"`) and open that URL instead.
+
+**UI looks stale after a pull**  
+Hard-refresh the browser (cache-bust query params are on CSS/JS). After
+**Python** backend changes, rebuild: `docker compose up --build -d`.
+
+### LLM providers
+
+**Admin saved an API key but chat still fails / looks unused**  
+1. Confirm the key type matches the provider (Gemini keys often start with
+   patterns different from OpenAI `sk-…`).  
+2. Set **LLM mode** in the sidebar to `gemini` / `openai`, or set
+   `LLM_PROVIDER` accordingly (with `auto`, the configured provider is preferred).  
+3. Check `/health` for which providers are available.
+
+**Ollama works on the host but not from Docker (Linux)**  
+`docker-compose.yml` maps `host.docker.internal` via `extra_hosts`. Ensure
+Ollama listens on `0.0.0.0:11434`, or set `OLLAMA_BASE_URL` to your host IP.
+
+**Answers say no LLM is configured**  
+No cloud key and Ollama unreachable → extractive fallback. Add a key or start
+Ollama, then retry.
+
+### Documents & OCR
+
+**Upload rejected (413 / 422 / 400)**  
+- `413`: file over `MAX_UPLOAD_BYTES` (default 25 MB).  
+- `400`: unsupported type or empty file.  
+- `422`: corrupt, encrypted, or no extractable text.
+
+**Scanned PDF returns little/no text**  
+Enable OCR (`OCR_ENABLED=true`). Docker includes Tesseract; local Python needs
+`tesseract` installed (`brew` / `apt` / Windows UB Mannheim build).
+
+**Auth login required unexpectedly**  
+`AUTH_ENABLED=true` in `.env`. Default accounts are in `.env.example`
+(`admin` / `user`). Change passwords before any shared deployment.
+
+---
+
+## License & disclaimer
+
+| Topic | Summary |
+| --- | --- |
+| **License** | Single-organization **internal use** only. See [`LICENSE`](LICENSE). |
+| **No resale** | Do not resell, republish, or redistribute the source (modified or not). |
+| **Fees** | One-time purchase of the source pack. **No ongoing license / SaaS fees** from the seller. |
+| **Operating costs** | **You** pay cloud hosting, compute, and **LLM / embedding API token costs** (OpenAI, Gemini, etc.). |
+| **Copyright** | © 2026 PrivateRAG. All rights reserved. Notices also appear in the Web UI and API (`/api`). |
+
+Full terms: [`LICENSE`](LICENSE).

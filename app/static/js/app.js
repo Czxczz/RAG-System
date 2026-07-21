@@ -1,4 +1,6 @@
-/** PrivateRAG Web UI — vanilla JS, no build step. */
+/** PrivateRAG Web UI — vanilla JS, no build step.
+ *  Copyright (c) 2026 PrivateRAG. All rights reserved.
+ */
 
 const STORAGE_KEY = "privaterag.conversation_id";
 const SETTINGS_KEY = "privaterag.settings";

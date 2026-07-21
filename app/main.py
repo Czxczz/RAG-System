@@ -1,5 +1,7 @@
 """FastAPI application entrypoint for PrivateRAG AI Assistant.
 
+Copyright (c) 2026 PrivateRAG. All rights reserved.
+
 Run locally:
     uvicorn app.main:app --reload
 
@@ -15,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import __version__
+from app import __copyright__, __version__
 from app.api.routes import router
 from app.dependencies import get_orchestrator
 
@@ -33,7 +35,9 @@ app = FastAPI(
     title="PrivateRAG AI Assistant",
     description=(
         "A private, hybrid RAG knowledge assistant. Upload documents and get "
-        "grounded answers with citations, using local or cloud LLMs."
+        "grounded answers with citations, using local or cloud LLMs.\n\n"
+        f"{__copyright__} Licensed for single internal use; see LICENSE. "
+        "Buyers pay their own cloud hosting and LLM API / token costs."
     ),
     version=__version__,
     lifespan=lifespan,
@@ -65,5 +69,6 @@ def root() -> dict:
     return {
         "name": "PrivateRAG AI Assistant",
         "version": __version__,
+        "copyright": __copyright__,
         "docs": "/docs",
     }
