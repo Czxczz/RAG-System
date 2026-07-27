@@ -54,11 +54,18 @@ class Settings(BaseSettings):
     ocr_min_chars_per_page: int = 40
 
     # ── Retrieval ────────────────────────────────────────────
-    top_k: int = 3
+    top_k: int = 5
     min_score: float = 0.20
     rerank_enabled: bool = True
-    retrieve_k: int = 20
+    retrieve_k: int = 40
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    # ── Hybrid (dense + BM25) ────────────────────────────────
+    hybrid_enabled: bool = True
+    bm25_top_k: int = 40
+    rrf_k: int = 60
+    overview_demote_enabled: bool = True
+    overview_demote_strength: float = 0.55
 
     # ── Query rewriting ──────────────────────────────────────
     query_rewrite_enabled: bool = True
@@ -67,8 +74,8 @@ class Settings(BaseSettings):
 
     # ── MMR / dedupe ─────────────────────────────────────────
     mmr_enabled: bool = True
-    mmr_lambda: float = 0.6
-    mmr_dedup_threshold: float = 0.85
+    mmr_lambda: float = 0.55
+    mmr_dedup_threshold: float = 0.80
     text_dedupe_enabled: bool = True
     text_dedupe_jaccard: float = 0.85
 

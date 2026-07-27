@@ -23,6 +23,7 @@ const queryInput = $("#query-input");
 const sendBtn = $("#send-btn");
 const fileInput = $("#file-input");
 const uploadZone = $("#upload-zone");
+const uploadStatus = $("#upload-status");
 const uploadProgress = $("#upload-progress");
 const uploadProgressLabel = $("#upload-progress-label");
 const uploadProgressPct = $("#upload-progress-pct");
@@ -36,11 +37,16 @@ const userLabel = $("#user-label");
 
 let conversationId = localStorage.getItem(STORAGE_KEY) || null;
 let isBusy = false;
+let isUploading = false;
 let engineBeforeStream = null;
 let allDocumentIds = [];
 let selectedDocIds = new Set();
 let currentUser = { username: "local", role: "admin", auth_enabled: false };
 let authToken = localStorage.getItem(TOKEN_KEY) || "";
+let uploadStatusTimer = null;
+
+const MAX_UPLOAD_BYTES_CLIENT = 25 * 1024 * 1024;
+const ALLOWED_UPLOAD_EXTS = new Set([".pdf", ".docx", ".txt", ".md", ".markdown"]);
 
 const STAGE_LABELS = {
   saving: "Saving file",
@@ -65,7 +71,7 @@ async function apiFetch(url, options = {}) {
   if (res.status === 401 && currentUser.auth_enabled) {
     clearSession();
     showLogin("Session expired. Please sign in again.");
-    throw new Error("Authentication required");
+    throw new Error("Please sign in to continue (session expired or missing).");
   }
   return res;
 }
@@ -83,7 +89,7 @@ function saveSettings() {
     mode: $("#mode-select").value,
     engine: $("#engine-select").value,
     stream: $("#stream-toggle").checked,
-    top_k: Number($("#top-k-input").value) || 3,
+    top_k: Number($("#top-k-input").value) || 5,
   };
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
@@ -114,7 +120,7 @@ function chatPayload(query) {
     query,
     mode: $("#mode-select").value,
     engine: $("#engine-select").value,
-    top_k: Number($("#top-k-input").value) || 3,
+    top_k: Number($("#top-k-input").value) || 5,
   };
   if (conversationId) body.conversation_id = conversationId;
   if (
@@ -342,6 +348,31 @@ function setBusy(busy) {
   queryInput.disabled = busy;
 }
 
+function setUploadBusy(busy) {
+  isUploading = busy;
+  uploadZone.classList.toggle("busy", busy);
+  fileInput.disabled = busy;
+}
+
+function setUploadStatus(kind, message) {
+  if (uploadStatusTimer) {
+    clearTimeout(uploadStatusTimer);
+    uploadStatusTimer = null;
+  }
+  if (!message) {
+    uploadStatus.className = "upload-status hidden";
+    uploadStatus.textContent = "";
+    return;
+  }
+  uploadStatus.className = `upload-status ${kind || "info"}`;
+  uploadStatus.textContent = message;
+  if (kind === "ok" || kind === "err") {
+    uploadStatusTimer = setTimeout(() => {
+      if (!isUploading) setUploadStatus("", "");
+    }, 8000);
+  }
+}
+
 function formatBytes(n) {
   if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   if (n >= 1024) return `${Math.round(n / 1024)} KB`;
@@ -363,11 +394,43 @@ function formatDate(iso) {
   }
 }
 
-function setUploadProgress(visible, percent = 0, label = "") {
+function setUploadProgress(visible, percent = 0, label = "", { error = false } = {}) {
   uploadProgress.classList.toggle("hidden", !visible);
+  uploadProgress.classList.toggle("is-error", Boolean(error));
   uploadProgressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
   uploadProgressPct.textContent = `${Math.round(percent)}%`;
   uploadProgressLabel.textContent = label || "Working…";
+}
+
+function fileExtension(name) {
+  const i = String(name || "").lastIndexOf(".");
+  return i >= 0 ? name.slice(i).toLowerCase() : "";
+}
+
+function validateUploadFile(file) {
+  const ext = fileExtension(file.name);
+  if (!ALLOWED_UPLOAD_EXTS.has(ext)) {
+    return `Unsupported type "${ext || "(none)"}". Use PDF, DOCX, TXT, or Markdown.`;
+  }
+  if (file.size <= 0) {
+    return "File is empty.";
+  }
+  if (file.size > MAX_UPLOAD_BYTES_CLIENT) {
+    return `File is too large (${formatBytes(file.size)}). Maximum is 25 MB.`;
+  }
+  if (currentUser.auth_enabled && !authToken) {
+    return "Please sign in before uploading.";
+  }
+  return null;
+}
+
+function detailFromErrorPayload(err) {
+  const detail = err?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
+  }
+  return null;
 }
 
 function renderCitations(citations) {
@@ -512,24 +575,35 @@ async function loadDocuments() {
 }
 
 async function uploadFile(file) {
+  const precheck = validateUploadFile(file);
+  if (precheck) throw new Error(precheck);
+
   const form = new FormData();
   form.append("file", file);
+  setUploadStatus("info", `Uploading ${file.name}…`);
   setUploadProgress(true, 2, `Uploading ${file.name}…`);
 
-  const res = await apiFetch("/documents/upload/stream", {
-    method: "POST",
-    body: form,
-  });
+  let res;
+  try {
+    res = await apiFetch("/documents/upload/stream", {
+      method: "POST",
+      body: form,
+    });
+  } catch (err) {
+    setUploadProgress(true, 100, err.message || "Upload failed", { error: true });
+    throw err;
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    const detail = err.detail;
-    const message =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
-          : "Upload failed";
-    setUploadProgress(false);
+    const message = detailFromErrorPayload(err) || `Upload failed (HTTP ${res.status})`;
+    setUploadProgress(true, 100, message, { error: true });
+    throw new Error(message);
+  }
+
+  if (!res.body) {
+    const message = "Upload stream unavailable in this browser.";
+    setUploadProgress(true, 100, message, { error: true });
     throw new Error(message);
   }
 
@@ -547,32 +621,63 @@ async function uploadFile(file) {
     for (const part of parts) {
       const line = part.split("\n").find((l) => l.startsWith("data:"));
       if (!line) continue;
-      const event = JSON.parse(line.slice(5).trim());
+      let event;
+      try {
+        event = JSON.parse(line.slice(5).trim());
+      } catch {
+        continue;
+      }
       if (event.type === "progress") {
         const label = `${STAGE_LABELS[event.stage] || event.stage}: ${event.filename || file.name}`;
+        setUploadStatus("info", label);
         setUploadProgress(true, event.percent || 0, label);
         await paintFrame();
       } else if (event.type === "done") {
         doneDoc = event.document;
         setUploadProgress(true, 100, `Indexed ${file.name}`);
       } else if (event.type === "error") {
-        setUploadProgress(false);
-        throw new Error(event.message || "Upload failed");
+        const message = event.message || "Upload failed";
+        setUploadProgress(true, 100, message, { error: true });
+        throw new Error(message);
       }
     }
   }
 
-  setUploadProgress(false);
+  if (!doneDoc) {
+    const message = "Upload finished without a success response. Check server logs.";
+    setUploadProgress(true, 100, message, { error: true });
+    throw new Error(message);
+  }
+
   await loadDocuments();
   await fetchHealth();
   const chunks = doneDoc?.num_chunks != null ? ` (${doneDoc.num_chunks} chunks)` : "";
-  appendMessage("system", `Uploaded ${file.name}${chunks}`);
+  const okMsg = `Uploaded ${file.name}${chunks}`;
+  setUploadStatus("ok", okMsg);
+  setUploadProgress(false);
+  appendMessage("system", okMsg);
 }
 
 async function uploadFiles(fileList) {
   const files = [...fileList];
-  for (const file of files) {
-    await uploadFile(file);
+  if (!files.length) {
+    setUploadStatus("err", "No file selected.");
+    return;
+  }
+  setUploadBusy(true);
+  try {
+    for (const file of files) {
+      try {
+        await uploadFile(file);
+      } catch (err) {
+        const message = err?.message || "Upload failed";
+        setUploadStatus("err", `${file.name}: ${message}`);
+        appendMessage("system", `Upload error (${file.name}): ${message}`);
+        // Continue remaining files so one bad file does not block the batch.
+      }
+    }
+  } finally {
+    setUploadBusy(false);
   }
 }
 
@@ -973,42 +1078,49 @@ async function initAppData() {
   }
 }
 
-// Upload handlers
-uploadZone.addEventListener("click", () => fileInput.click());
+// Upload handlers — native <label for="file-input"> opens the picker on click.
+// Do NOT also call fileInput.click() (double-open) or use input[hidden]
+// (some browsers block programmatic open).
+uploadZone.addEventListener("click", (e) => {
+  if (isUploading) {
+    e.preventDefault();
+    return;
+  }
+  if (currentUser.auth_enabled && !authToken) {
+    e.preventDefault();
+    setUploadStatus("err", "Please sign in before uploading.");
+    showLogin("Please sign in to upload documents.");
+  }
+});
 uploadZone.addEventListener("dragover", (e) => {
   e.preventDefault();
-  uploadZone.classList.add("dragover");
+  if (!isUploading) uploadZone.classList.add("dragover");
 });
 uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("dragover"));
 uploadZone.addEventListener("drop", async (e) => {
   e.preventDefault();
   uploadZone.classList.remove("dragover");
-  const files = e.dataTransfer.files;
-  if (!files?.length) return;
-  try {
-    setBusy(true);
-    await uploadFiles(files);
-  } catch (err) {
-    appendMessage("system", `Upload error: ${err.message}`);
-    setUploadProgress(false);
-  } finally {
-    setBusy(false);
+  if (isUploading) return;
+  if (currentUser.auth_enabled && !authToken) {
+    setUploadStatus("err", "Please sign in before uploading.");
+    showLogin("Please sign in to upload documents.");
+    return;
   }
+  const files = e.dataTransfer.files;
+  if (!files?.length) {
+    setUploadStatus("err", "No file dropped.");
+    return;
+  }
+  await uploadFiles(files);
 });
 
 fileInput.addEventListener("change", async () => {
   const files = fileInput.files;
   if (!files?.length) return;
+  // Copy FileList before clearing the input value.
+  const selected = [...files];
   fileInput.value = "";
-  try {
-    setBusy(true);
-    await uploadFiles(files);
-  } catch (err) {
-    appendMessage("system", `Upload error: ${err.message}`);
-    setUploadProgress(false);
-  } finally {
-    setBusy(false);
-  }
+  await uploadFiles(selected);
 });
 
 $("#mode-select").addEventListener("change", saveSettings);

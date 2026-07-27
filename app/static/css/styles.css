@@ -124,6 +124,7 @@ body {
 }
 
 .upload-zone {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -219,12 +220,71 @@ body {
   padding: 0.15rem 0.35rem;
 }
 
+/* Keep the input in the accessibility tree but invisible.
+   `hidden` / display:none breaks click-to-open in some browsers. */
+.upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.upload-zone.busy {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: wait;
+}
+
+.upload-status {
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.upload-status.info {
+  color: #99f6e4;
+  background: rgba(94, 234, 212, 0.1);
+  border: 1px solid rgba(94, 234, 212, 0.25);
+}
+
+.upload-status.ok {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.upload-status.err {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
 .upload-progress {
-  margin-top: 0.65rem;
+  margin-top: 0.55rem;
   padding: 0.55rem 0.65rem;
   border-radius: 8px;
   background: rgba(94, 234, 212, 0.1);
   border: 1px solid rgba(94, 234, 212, 0.25);
+}
+
+.upload-progress.is-error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.upload-progress.is-error .upload-progress-meta {
+  color: #fecaca;
+}
+
+.upload-progress.is-error .upload-progress-bar {
+  background: #f87171;
 }
 
 .upload-progress-meta {

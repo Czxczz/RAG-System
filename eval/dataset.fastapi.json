@@ -1,0 +1,229 @@
+{
+  "name": "fastapi-multidoc",
+  "cases": [
+    {
+      "id": "mastering-install-uvicorn",
+      "query": "How do I install FastAPI and Uvicorn and run my first API?",
+      "relevant_keywords": ["Uvicorn", "install", "FastAPI"],
+      "expected_answer_keywords": ["Uvicorn", "FastAPI"],
+      "document_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "expected_source_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "mastering-pydantic-validation",
+      "query": "How does FastAPI use Pydantic for data validation?",
+      "relevant_keywords": ["Pydantic", "validation", "BaseModel"],
+      "expected_answer_keywords": ["Pydantic"],
+      "document_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "expected_source_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "mastering-sqlalchemy",
+      "query": "How do I connect FastAPI to a database with SQLAlchemy?",
+      "relevant_keywords": ["SQLAlchemy", "database", "Session"],
+      "expected_answer_keywords": ["SQLAlchemy"],
+      "document_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "expected_source_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "mastering-httpexception",
+      "query": "How do I use HTTPException for error handling in FastAPI?",
+      "relevant_keywords": ["HTTPException", "error"],
+      "expected_answer_keywords": ["HTTPException"],
+      "document_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "expected_source_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "mastering-cors",
+      "query": "How do I enable CORS middleware in FastAPI?",
+      "relevant_keywords": ["CORS", "CORSMiddleware", "middleware"],
+      "expected_answer_keywords": ["CORS"],
+      "document_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "expected_source_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "tutorial-path-parameters",
+      "query": "What are path parameters in FastAPI and how do I declare them?",
+      "relevant_keywords": ["path parameter", "path"],
+      "expected_answer_keywords": ["path"],
+      "document_filenames": ["fastapi_tutorial.pdf"],
+      "expected_source_filenames": ["fastapi_tutorial.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "tutorial-query-parameters",
+      "query": "What are query parameters in FastAPI?",
+      "relevant_keywords": ["query parameter", "query"],
+      "expected_answer_keywords": ["query"],
+      "document_filenames": ["fastapi_tutorial.pdf"],
+      "expected_source_filenames": ["fastapi_tutorial.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "tutorial-htmlresponse",
+      "query": "How do I return an HTML response instead of JSON in FastAPI?",
+      "relevant_keywords": ["HTMLResponse", "HTML"],
+      "expected_answer_keywords": ["HTMLResponse"],
+      "document_filenames": ["fastapi_tutorial.pdf"],
+      "expected_source_filenames": ["fastapi_tutorial.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "tutorial-jinja2",
+      "query": "How do I use Jinja2 templates with FastAPI?",
+      "relevant_keywords": ["Jinja2", "template"],
+      "expected_answer_keywords": ["Jinja2"],
+      "document_filenames": ["fastapi_tutorial.pdf"],
+      "expected_source_filenames": ["fastapi_tutorial.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "tutorial-websockets",
+      "query": "How do WebSockets work in FastAPI?",
+      "relevant_keywords": ["WebSocket", "websocket"],
+      "expected_answer_keywords": ["WebSocket"],
+      "document_filenames": ["fastapi_tutorial.pdf"],
+      "expected_source_filenames": ["fastapi_tutorial.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "building-apirouter",
+      "query": "How do I organize routes with the APIRouter class in FastAPI?",
+      "relevant_keywords": ["APIRouter", "routing", "router"],
+      "expected_answer_keywords": ["APIRouter"],
+      "document_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "expected_source_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "building-oauth2-jwt",
+      "query": "How do I secure a FastAPI application with OAuth2 and JWT?",
+      "relevant_keywords": ["OAuth2", "JWT", "token"],
+      "expected_answer_keywords": ["OAuth2", "JWT"],
+      "document_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "expected_source_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "building-hash-passwords",
+      "query": "How do I hash passwords when securing a FastAPI application?",
+      "relevant_keywords": ["hash", "password"],
+      "expected_answer_keywords": ["password"],
+      "document_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "expected_source_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "building-sqlmodel",
+      "query": "How do I connect FastAPI to a database using SQLModel?",
+      "relevant_keywords": ["SQLModel", "database", "session"],
+      "expected_answer_keywords": ["SQLModel"],
+      "document_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "expected_source_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "building-pytest",
+      "query": "How do I unit test FastAPI applications with pytest?",
+      "relevant_keywords": ["pytest", "testing", "fixture"],
+      "expected_answer_keywords": ["pytest"],
+      "document_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "expected_source_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "mixed-swagger-docs",
+      "query": "What interactive API documentation does FastAPI provide out of the box?",
+      "relevant_keywords": ["Swagger", "OpenAPI", "docs"],
+      "expected_answer_keywords": ["Swagger"],
+      "document_filenames": [
+        "Mastering_FastAPI_with_Python.pdf",
+        "fastapi_tutorial.pdf",
+        "Building Python Web APIs with FastAPI.pdf"
+      ],
+      "expected_source_filenames": [
+        "Mastering_FastAPI_with_Python.pdf",
+        "fastapi_tutorial.pdf",
+        "Building Python Web APIs with FastAPI.pdf"
+      ],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "mixed-dependency-injection",
+      "query": "What is dependency injection in FastAPI and how is Depends used?",
+      "relevant_keywords": ["Depends", "dependency"],
+      "expected_answer_keywords": ["Depends"],
+      "document_filenames": [
+        "Mastering_FastAPI_with_Python.pdf",
+        "fastapi_tutorial.pdf",
+        "Building Python Web APIs with FastAPI.pdf"
+      ],
+      "expected_source_filenames": [
+        "Mastering_FastAPI_with_Python.pdf",
+        "fastapi_tutorial.pdf",
+        "Building Python Web APIs with FastAPI.pdf"
+      ],
+      "should_refuse": false,
+      "top_k": 3
+    },
+    {
+      "id": "scoped-refuse-websockets-building-only",
+      "query": "How do WebSockets work in FastAPI?",
+      "relevant_keywords": ["WebSocket"],
+      "document_filenames": ["Building Python Web APIs with FastAPI.pdf"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "scoped-refuse-sqlmodel-mastering-only",
+      "query": "How do I connect FastAPI to a database using SQLModel?",
+      "relevant_keywords": ["SQLModel"],
+      "document_filenames": ["Mastering_FastAPI_with_Python.pdf"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "scoped-refuse-oauth2-tutorial-only",
+      "query": "How do I secure a FastAPI application with OAuth2 and JWT access tokens?",
+      "relevant_keywords": ["OAuth2", "JWT"],
+      "document_filenames": ["fastapi_tutorial.pdf"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "refuse-kubernetes-helm",
+      "query": "How do I configure a Helm chart for a Kubernetes deployment?",
+      "relevant_keywords": ["helm", "kubernetes"],
+      "should_refuse": true,
+      "top_k": 3
+    },
+    {
+      "id": "refuse-bigquery-billing",
+      "query": "How do I configure billing alerts in Google BigQuery?",
+      "relevant_keywords": ["bigquery"],
+      "should_refuse": true,
+      "top_k": 3
+    }
+  ]
+}

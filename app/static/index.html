@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/styles.css?v=20260721f" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=20260727c" />
 </head>
 <body>
   <!-- Login gate (shown only when AUTH_ENABLED=true) -->
@@ -59,11 +59,18 @@
       <section class="panel">
         <h2>Documents</h2>
         <p class="panel-hint">Uncheck to limit chat to specific documents.</p>
-        <label class="upload-zone" id="upload-zone">
-          <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.markdown" multiple hidden />
-          <span>Drop files or click to upload</span>
-          <small>PDF (incl. scanned), DOCX, TXT, Markdown</small>
+        <label class="upload-zone" id="upload-zone" for="file-input">
+          <input
+            type="file"
+            id="file-input"
+            class="upload-input"
+            accept=".pdf,.docx,.txt,.md,.markdown"
+            multiple
+          />
+          <span id="upload-zone-title">Drop files or click to upload</span>
+          <small>PDF (incl. scanned), DOCX, TXT, Markdown · max 25 MB</small>
         </label>
+        <p id="upload-status" class="upload-status hidden" role="status" aria-live="polite"></p>
         <div id="upload-progress" class="upload-progress hidden" aria-live="polite">
           <div class="upload-progress-meta">
             <span id="upload-progress-label">Uploading…</span>
@@ -105,7 +112,7 @@
         </label>
         <label class="field">
           <span>top_k</span>
-          <input type="number" id="top-k-input" min="1" max="20" value="3" />
+          <input type="number" id="top-k-input" min="1" max="20" value="5" />
         </label>
         <button type="button" id="new-chat-btn" class="btn btn-ghost">New conversation</button>
         <button type="button" id="open-admin-btn" class="btn btn-ghost hidden">Admin configuration</button>
@@ -242,6 +249,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=20260721f" defer></script>
+  <script src="/static/js/app.js?v=20260727c" defer></script>
 </body>
 </html>

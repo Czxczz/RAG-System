@@ -1,0 +1,486 @@
+{
+  "dataset": "fastapi-multidoc",
+  "mode": "gemini",
+  "top_k": 5,
+  "num_cases": 22,
+  "precision_at_k": 0.7575757575757577,
+  "recall_at_k": 0.7272727272727272,
+  "hallucination_rate": 0.045454545454545456,
+  "citation_accuracy": 1.0,
+  "answer_keyword_recall": 1.0,
+  "refusal_accuracy": 1.0,
+  "source_accuracy": 1.0,
+  "redundancy": 0.7676508507945321,
+  "cases": [
+    {
+      "case_id": "mastering-install-uvicorn",
+      "query": "How do I install FastAPI and Uvicorn and run my first API?",
+      "answer": "To install FastAPI and Uvicorn, you first need to ensure you have Python 3.7+ installed [1]. You can verify your Python version by running `python --version` [1]. Once confirmed, install FastAPI and Uvicorn using pip by running the command `pip install fastapi uvicorn` in your terminal or command prompt [1, 2]. FastAPI is the core framework for building APIs, while Uvicorn is a fast ASGI server that runs FastAPI applications [2].\n\nAfter installation, to run your first API, create a new Python file named `main.py` (or any preferred name) [2]. The context mentions that after installation, you are ready to start building your first FastAPI application and create a new Python file [2]. It also notes that setting up the first FastAPI application and exploring how to run and interact with APIs using Swagger UI and ReDoc for documentation are key features [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.9047083854675293
+      },
+      "notes": [],
+      "elapsed_seconds": 6.8
+    },
+    {
+      "case_id": "mastering-pydantic-validation",
+      "query": "How does FastAPI use Pydantic for data validation?",
+      "answer": "FastAPI integrates Pydantic, a powerful data validation and parsing library, to handle the validation of incoming data [3]. Pydantic is used for validating incoming data, which helps reduce errors and improves the user experience by ensuring correct data formats are followed [1]. It allows developers to define data models that ensure the correctness of data before it is used in the application [3]. Pydantic provides a way to define these data models using Python's type annotations [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8702874779701233
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 5.5
+    },
+    {
+      "case_id": "mastering-sqlalchemy",
+      "query": "How do I connect FastAPI to a database with SQLAlchemy?",
+      "answer": "To connect FastAPI to a database with SQLAlchemy, you first need to install the necessary libraries: `fastapi[all]`, `sqlalchemy`, and `psycopg2` (if using PostgreSQL) [2].\n\nAfter installation, you can set up your database connection. For an SQLite database, which is a lightweight option suitable for development or testing, you can define a `SQLALCHEMY_DATABASE_URL` like `\"sqlite:///./test.db\"` [2, 3].\n\nThen, you create an engine and a session factory:\n```python\nengine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={\"check_same_thread\": False})\nSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)\n```\nFinally, you can create a `get_db` dependency function to manage database sessions within your API routes, ensuring sessions are closed after use [3]:\n```python\nfrom sqlalchemy.orm import Session\nfrom fastapi import Depends, HTTPException\n\ndef get_db():\n    db = SessionLocal()\n    try:\n        yield db\n    finally:\n        db.close()\n```\nThis `get_db` dependency allows you to pass the database session to your API route functions [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8782329559326172
+      },
+      "notes": [],
+      "elapsed_seconds": 6.9
+    },
+    {
+      "case_id": "mastering-httpexception",
+      "query": "How do I use HTTPException for error handling in FastAPI?",
+      "answer": "In FastAPI, the `HTTPException` class is used for handling errors gracefully by allowing you to raise exceptions with specific HTTP status codes and custom error messages [1]. This is useful when conditions are not met, such as when a resource is not found or there is an invalid request [1]. When an `HTTPException` is raised, FastAPI automatically returns a response with the specified status code and the error message in the response body [2].\n\nFor example, to handle a \"not found\" scenario for an item, you can raise an `HTTPException` with a `status_code` of 404 and a `detail` message like \"Item not found\" if the requested `item_id` does not exist [2]. This ensures meaningful and consistent error messages and status codes are returned when something goes wrong [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8972976207733154
+      },
+      "notes": [],
+      "elapsed_seconds": 5.7
+    },
+    {
+      "case_id": "mastering-cors",
+      "query": "How do I enable CORS middleware in FastAPI?",
+      "answer": "To enable CORS middleware in FastAPI, you first need to install the necessary package using `pip install fastapi[all]` [2].\n\nThen, you can add `CORSMiddleware` to your FastAPI application [2, 3]. This involves importing `CORSMiddleware` from `starlette.middleware.cors` and adding it to your app using `app.add_middleware()` [1, 3].\n\nWhen adding the middleware, you can configure various parameters:\n*   `allow_origins`: A list defining which domains can send requests to your API. This can be specific domains like `\"https://example.com\"` or `\"http://localhost\"` [3]. You can also allow all origins by setting it to `[\"*\"]` [1].\n*   `allow_methods`: Defines which HTTP methods are allowed from the client, such as `[\"GET\", \"POST\", \"PUT\", \"DELETE\"]` [3]. You can also allow all methods by setting it to `[\"*\"]` [1].\n*   `allow_headers`: Allows specific headers or all headers by setting it to `[\"*\"]` [1, 3].\n*   `allow_credentials`: Set to `True` to allow cookies to be sent [3].\n\nHere's an example of how to set it up [3]:\n```python\nfrom fastapi import FastAPI\nfrom starlette.middleware.cors import CORSMiddleware\n\napp = FastAPI()\n\norigins = [\n    \"https://example.com\", # Specific domain\n    \"http://localhost\", # Local development environment\n]\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=origins, # List of allowed origins\n    allow_credentials=True, # Allow cookies to be sent\n    allow_methods=[\"GET\", \"POST\", \"PUT\", \"DELETE\"], # Allowed HTTP methods\n    allow_headers=[\"*\"], # Allow all headers\n)\n```",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8346056342124939
+      },
+      "notes": [],
+      "elapsed_seconds": 6.6
+    },
+    {
+      "case_id": "tutorial-path-parameters",
+      "query": "What are path parameters in FastAPI and how do I declare them?",
+      "answer": "Validation conditions can be applied to path parameters using the `Path` class [2]. For example, \"id\" can be used as a path parameter in a route like \"/book/1\" [3]. The `/hello` endpoint, however, has no path parameters [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8129155039787292
+      },
+      "notes": [],
+      "elapsed_seconds": 6.0
+    },
+    {
+      "case_id": "tutorial-query-parameters",
+      "query": "What are query parameters in FastAPI?",
+      "answer": "Query parameters in FastAPI are parts of the endpoint that are not path parameters, treated by FastAPI as a query string [1]. This query string consists of `parameter=value` pairs joined by the `&` symbol [1]. FastAPI parses these into parameters and their values, which are then passed to the function below the operation decorator [1]. For example, in `http://localhost:8000/hello?name=Ravi&age=20`, `name` and `age` are query parameters [1]. Validation conditions can be applied to query parameters by specifying them as arguments of the `Query` class constructor [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8096820116043091
+      },
+      "notes": [],
+      "elapsed_seconds": 6.7
+    },
+    {
+      "case_id": "tutorial-htmlresponse",
+      "query": "How do I return an HTML response instead of JSON in FastAPI?",
+      "answer": "By default, FastAPI renders a JSON response to the client [3]. To return an HTML response instead, you can use the `HTMLResponse` class, which is defined in the `fastapi.responses` module [3]. You need to add `response_class` as an additional parameter to the operation decorator (e.g., `@app.get()`), setting its value to an `HTMLResponse` object [3]. The function can then return a string representation of HTML code, which will be returned as an HTML response [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.6666666666666666,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 2,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8427342176437378
+      },
+      "notes": [],
+      "elapsed_seconds": 5.6
+    },
+    {
+      "case_id": "tutorial-jinja2",
+      "query": "How do I use Jinja2 templates with FastAPI?",
+      "answer": "To use Jinja2 templates with FastAPI, you first need to install Jinja2 using `pip3 install jinja2` [2].\n\nFastAPI supports Jinja templates through the `Jinja2Templates` class, which is defined in the `fastapi.templating` module [2]. You would import it using `from fastapi.templating import Jinja2Templates` [2].\n\nTo declare a template object, you must provide the folder where your HTML templates are stored as a parameter [2]. For example, you might create a 'templates' directory within your current working directory [2].\n\nJinja2 templates allow placeholders to be embedded in HTML code using specific code elements:\n*   `{% %}` for statements [3].\n*   `{{ }}` for expressions to print to the template output [3].\n*   `{# #}` for comments that are not included in the template output [3].\n*   `# # #` for line statements [3].\n\nThese code elements are populated by variable data provided by the HTTP response when the template engine processes them [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8539732098579407
+      },
+      "notes": [],
+      "elapsed_seconds": 7.5
+    },
+    {
+      "case_id": "tutorial-websockets",
+      "query": "How do WebSockets work in FastAPI?",
+      "answer": "WebSockets provide a persistent, bidirectional, full-duplex communication connection between a client and server over HTTP, utilizing a single TCP/IP socket [1]. FastAPI supports WebSockets through its `WebSocket` class, enabling the creation of real-time applications [2].\n\nIn a FastAPI application, a WebSocket endpoint can be defined using the `@app.websocket()` decorator, for example, `@app.websocket(\"/ws\")` [3]. When a client connects to this endpoint, the `websocket_endpoint` function is invoked [3]. The connection request is accepted using `await websocket.accept()` [3]. Once established, the connection allows for continuous communication, such as receiving text data with `await websocket.receive_text()` and sending text data back to the client with `await websocket.send_text()` [3]. This communication takes place over the same TCP connection that is kept alive after the initial HTTP response [1].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.7800019979476929
+      },
+      "notes": [],
+      "elapsed_seconds": 7.3
+    },
+    {
+      "case_id": "building-apirouter",
+      "query": "How do I organize routes with the APIRouter class in FastAPI?",
+      "answer": "The `APIRouter` class encourages modularity and organization of application routing and logic [2]. It is used for multiple routing in extensive applications that require a series of routes performing different functions [1].\n\nTo organize routes with `APIRouter`:\n1.  Import `APIRouter` from the `fastapi` package and create an instance [2].\n2.  Create and distribute route methods from this `APIRouter` instance [2].\n3.  Add the routes defined with the `APIRouter` class to the main application's `FastAPI` instance using the `include_router()` method to make them visible [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": true,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.9104983806610107
+      },
+      "notes": [
+        "Hallucination heuristic triggered."
+      ],
+      "elapsed_seconds": 5.8
+    },
+    {
+      "case_id": "building-oauth2-jwt",
+      "query": "How do I secure a FastAPI application with OAuth2 and JWT?",
+      "answer": "To secure an application with OAuth2 and JWT, one can start by creating an `auth` folder in the project directory [1]. Inside this folder, create files such as `__init__.py`, `jwt_handler.py`, `authenticate.py`, and `hash_password.py` [1].\n\nThe `jwt_handler.py` file will contain functions for encoding and decoding JWT strings [1]. The `authenticate.py` file will hold the authenticate dependency, which will be injected into routes to enforce authentication and authorization [1].\n\nCreating a JWT involves a payload that includes the user ID and an expiry time, which is then encoded into a string [2]. JWTs are signed using a secret key known only to the sender and receiver [2]. The `encode()` method takes three parameters: a payload (a dictionary of values to be encoded), a key used to sign the payload, and an algorithm (commonly HS256) [3]. The `expires` value for the token is typically set to an hour from its creation time [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.800329327583313
+      },
+      "notes": [],
+      "elapsed_seconds": 9.2
+    },
+    {
+      "case_id": "building-hash-passwords",
+      "query": "How do I hash passwords when securing a FastAPI application?",
+      "answer": "To hash passwords when securing a FastAPI application, you can use the `CryptContext` imported with the `bcrypt` scheme [2]. This context is stored in a `pwd_context` variable, which provides methods for the task [2]. A `HashPassword` class can be defined with a `create_hash` method that takes a string (the password) and returns its hashed value using `pwd_context.hash(password)` [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8068563938140869
+      },
+      "notes": [],
+      "elapsed_seconds": 5.7
+    },
+    {
+      "case_id": "building-sqlmodel",
+      "query": "How do I connect FastAPI to a database using SQLModel?",
+      "answer": "To connect FastAPI to a database using SQLModel, the first step is to install the SQLModel library [3]. SQLModel was created by the creator of FastAPI and is powered by Pydantic and SQLAlchemy [3]. Chapter 6 discusses connecting to a SQL database using SQLModel, covering its setup and CRUD operations [1, 2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8740224838256836
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 7.6
+    },
+    {
+      "case_id": "building-pytest",
+      "query": "How do I unit test FastAPI applications with pytest?",
+      "answer": "Unit testing with pytest involves testing individual components of an application to verify their working capability [2]. For example, unit tests can be used to test individual routes in an application to ensure they return the proper responses [2]. The basics of unit testing using the pytest library are covered, including how to eliminate repetition and reuse test components with fixtures, and how to set up the test environment [3]. Technical requirements for this process include having a running MongoDB server [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8976069688796997
+      },
+      "notes": [],
+      "elapsed_seconds": 7.5
+    },
+    {
+      "case_id": "mixed-swagger-docs",
+      "query": "What interactive API documentation does FastAPI provide out of the box?",
+      "answer": "FastAPI provides automatic interactive API documentation out-of-the-box [1]. This includes Swagger UI, which allows interaction with the API directly in the browser [1, 2], and ReDoc, which serves as a knowledge base on how to use the API [3].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 0.6666666666666666,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.832679033279419
+      },
+      "notes": [
+        "Not all expected retrieval keywords found in top-k."
+      ],
+      "elapsed_seconds": 5.1
+    },
+    {
+      "case_id": "mixed-dependency-injection",
+      "query": "What is dependency injection in FastAPI and how is Depends used?",
+      "answer": "Dependency injection in FastAPI is a mechanism where an object, such as a function, receives other objects it depends on [3]. It is a pattern where a function receives an instance variable needed for its execution [2]. In FastAPI, dependencies are injected by declaring them in the path operation function arguments [2]. This system allows for easier integration of components when building an API [3].\n\nThe `Depends` class is responsible for exercising dependency injection in FastAPI applications [1]. It takes a truth source, such as a function, as an argument and is passed as a function argument in a route [1]. This mandates that the dependency condition must be satisfied before any operation can be executed [1]. Authentication methods, for example, are injected into FastAPI applications as dependencies using this mechanism [2].",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 1.0,
+        "recall_at_k": 1.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 3,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.8330027461051941
+      },
+      "notes": [],
+      "elapsed_seconds": 5.3
+    },
+    {
+      "case_id": "scoped-refuse-websockets-building-only",
+      "query": "How do WebSockets work in FastAPI?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.9212310910224915
+      },
+      "notes": [],
+      "elapsed_seconds": 5.2
+    },
+    {
+      "case_id": "scoped-refuse-sqlmodel-mastering-only",
+      "query": "How do I connect FastAPI to a database using SQLModel?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.7835668921470642
+      },
+      "notes": [],
+      "elapsed_seconds": 5.4
+    },
+    {
+      "case_id": "scoped-refuse-oauth2-tutorial-only",
+      "query": "How do I secure a FastAPI application with OAuth2 and JWT access tokens?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "none",
+      "grounded": false,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 0,
+        "source_accuracy": 1.0,
+        "redundancy": 0.0
+      },
+      "notes": [],
+      "elapsed_seconds": 4.6
+    },
+    {
+      "case_id": "refuse-kubernetes-helm",
+      "query": "How do I configure a Helm chart for a Kubernetes deployment?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "none",
+      "grounded": false,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 0,
+        "source_accuracy": 1.0,
+        "redundancy": 0.0
+      },
+      "notes": [],
+      "elapsed_seconds": 3.9
+    },
+    {
+      "case_id": "refuse-bigquery-billing",
+      "query": "How do I configure billing alerts in Google BigQuery?",
+      "answer": "I couldn't find anything relevant in your uploaded documents to answer that question.",
+      "provider": "gemini",
+      "grounded": true,
+      "metrics": {
+        "precision_at_k": 0.0,
+        "recall_at_k": 0.0,
+        "hallucination": false,
+        "citation_accuracy": 1.0,
+        "answer_keyword_recall": 1.0,
+        "refused_correctly": true,
+        "retrieved_relevant": 0,
+        "retrieved_total": 3,
+        "source_accuracy": 1.0,
+        "redundancy": 0.7440863847732544
+      },
+      "notes": [],
+      "elapsed_seconds": 6.9
+    }
+  ]
+}

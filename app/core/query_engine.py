@@ -4,19 +4,26 @@ Pipeline:
 
     query
       -> rewrite into variants (multi-query)            [query_rewriter]
-      -> embed variants + FAISS search, fuse by max-cosine
-      -> cosine threshold filter (min_score)
+      -> dense FAISS search (per variant, fused)
+      -> BM25 sparse search (optional hybrid)           [bm25_index]
+      -> Reciprocal Rank Fusion (dense + BM25)
+      -> cosine threshold filter (min_score, dense path)
       -> cross-encoder rerank                            [reranker]
+      -> overview / TOC soft demotion (optional)
       -> diversity-aware reranking (MMR)                 [diversity]
       -> top_k
 
 Each stage is independently toggle-able via settings, so the engine degrades
-gracefully (e.g. no LLM -> heuristic query rewriting; rerank off -> cosine
-order feeds MMR directly).
+gracefully (e.g. no LLM -> heuristic query rewriting; hybrid off -> dense only).
 """
 from __future__ import annotations
 
 from app.config import Settings
+from app.core.bm25_index import (
+    BM25Index,
+    demote_overview_hits,
+    reciprocal_rank_fusion,
+)
 from app.core.diversity import dedupe_by_text, mmr_rerank
 from app.core.embeddings import EmbeddingService
 from app.core.query_rewriter import QueryRewriter
@@ -39,6 +46,8 @@ class QueryEngine:
         self.store = store
         self.reranker = reranker
         self.rewriter = rewriter
+        self._bm25 = BM25Index()
+        self._bm25_size = -1
 
     def retrieve(
         self,
@@ -51,17 +60,37 @@ class QueryEngine:
 
         # A wider pool is needed when a second-stage selector (rerank or MMR)
         # will trim it back down to top_k.
-        needs_pool = self.settings.rerank_enabled or self.settings.mmr_enabled
+        needs_pool = (
+            self.settings.rerank_enabled
+            or self.settings.mmr_enabled
+            or self.settings.hybrid_enabled
+        )
         pool_k = max(self.settings.retrieve_k if needs_pool else top_k, top_k)
 
-        hits = self._multi_query_search(
+        dense_hits = self._multi_query_search(
             variants, pool_k=pool_k, min_score=min_score, document_ids=document_ids
         )
+
+        if self.settings.hybrid_enabled:
+            hits = self._hybrid_fuse(
+                variants,
+                dense_hits,
+                pool_k=pool_k,
+                document_ids=document_ids,
+            )
+        else:
+            hits = dense_hits
+
         if not hits:
             return []
 
         if self.settings.rerank_enabled and self.reranker:
             hits = self._rerank_over_variants(variants, hits)
+
+        if self.settings.overview_demote_enabled:
+            hits = demote_overview_hits(
+                hits, strength=self.settings.overview_demote_strength
+            )
 
         # Keep the full post-rerank pool; MMR/top_k trimming can drop spec tables.
         rerank_pool = hits
@@ -89,6 +118,50 @@ class QueryEngine:
         if self.rewriter is None or not self.settings.query_rewrite_enabled:
             return [query]
         return self.rewriter.rewrite(query)
+
+    def _sync_bm25(self) -> None:
+        """Rebuild BM25 when the FAISS metadata length changes."""
+        n = self.store.num_chunks
+        if n == self._bm25_size and self._bm25.size == n:
+            return
+        # VectorStore metadata order matches FAISS rows.
+        self._bm25.rebuild(list(self.store._metadata))  # noqa: SLF001
+        self._bm25_size = n
+
+    def _hybrid_fuse(
+        self,
+        variants: list[str],
+        dense_hits: list[SearchHit],
+        *,
+        pool_k: int,
+        document_ids: set[str] | None,
+    ) -> list[SearchHit]:
+        """Fuse dense + BM25 rankings with Reciprocal Rank Fusion."""
+        self._sync_bm25()
+        bm25_k = max(self.settings.bm25_top_k, pool_k)
+        rankings: list[list[SearchHit]] = []
+        if dense_hits:
+            rankings.append(dense_hits)
+
+        bm25_fused: dict[str, SearchHit] = {}
+        for variant in variants:
+            for hit in self._bm25.search(
+                variant, top_k=bm25_k, document_ids=document_ids
+            ):
+                existing = bm25_fused.get(hit.chunk.id)
+                if existing is None or hit.score > existing.score:
+                    bm25_fused[hit.chunk.id] = hit
+        bm25_hits = sorted(
+            bm25_fused.values(), key=lambda h: h.score, reverse=True
+        )[:bm25_k]
+        if bm25_hits:
+            rankings.append(bm25_hits)
+
+        if not rankings:
+            return []
+        if len(rankings) == 1:
+            return rankings[0]
+        return reciprocal_rank_fusion(rankings, rrf_k=self.settings.rrf_k)
 
     def _multi_query_search(
         self,

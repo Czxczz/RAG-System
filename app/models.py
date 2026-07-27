@@ -158,6 +158,9 @@ class ConfigUpdateRequest(BaseModel):
     min_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     rerank_enabled: Optional[bool] = None
     retrieve_k: Optional[int] = Field(default=None, ge=1, le=100)
+    hybrid_enabled: Optional[bool] = None
+    bm25_top_k: Optional[int] = Field(default=None, ge=1, le=100)
+    overview_demote_enabled: Optional[bool] = None
     mmr_enabled: Optional[bool] = None
     mmr_lambda: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     mmr_dedup_threshold: Optional[float] = Field(default=None, ge=0.0, le=1.0)

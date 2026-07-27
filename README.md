@@ -404,15 +404,18 @@ See [`.env.example`](.env.example). Key settings:
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | — / `gemini-2.5-flash` | Google Gemini cloud |
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Local model (recommended for 8 GB RAM) |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `120` | Chunking (characters) |
-| `TOP_K` | `3` | Chunks sent to the LLM after reranking |
-| `MIN_SCORE` | `0.20` | Cosine threshold before reranking |
+| `TOP_K` | `5` | Chunks sent to the LLM after reranking |
+| `MIN_SCORE` | `0.20` | Cosine threshold before hybrid fuse / reranking |
 | `RERANK_ENABLED` | `true` | Enable cross-encoder reranking |
-| `RETRIEVE_K` | `20` | FAISS candidate pool when reranking is on |
+| `RETRIEVE_K` | `40` | Dense FAISS candidate pool when reranking/hybrid is on |
+| `HYBRID_ENABLED` | `true` | Fuse dense FAISS + BM25 via Reciprocal Rank Fusion |
+| `BM25_TOP_K` | `40` | Sparse BM25 candidate pool size |
+| `OVERVIEW_DEMOTE_ENABLED` | `true` | Soft-demote TOC / chapter-intro style chunks |
 | `QUERY_REWRITE_ENABLED` | `true` | Multi-query expansion of the question |
 | `QUERY_REWRITE_USE_LLM` | `true` | LLM paraphrases (else heuristic fallback) |
 | `MMR_ENABLED` | `true` | Diversity-aware (MMR) reranking |
-| `MMR_LAMBDA` | `0.6` | Relevance↔diversity trade-off (tuned on EC2 eval) |
-| `MMR_DEDUP_THRESHOLD` | `0.85` | Hard cap: drop chunks with cosine ≥ this to a kept chunk |
+| `MMR_LAMBDA` | `0.55` | Relevance↔diversity trade-off |
+| `MMR_DEDUP_THRESHOLD` | `0.80` | Hard cap: drop chunks with cosine ≥ this to a kept chunk |
 | `TEXT_DEDUPE_ENABLED` | `true` | Word-overlap text filter after MMR |
 | `TEXT_DEDUPE_JACCARD` | `0.85` | Jaccard threshold for near-identical text |
 | `CONTEXT_GROUPING_ENABLED` | `true` | Group context by source in reading order |
@@ -432,9 +435,12 @@ pipeline on top of vector search:
 query
   → prompt-injection scan ........ block spoof strip + optional hard block
   → rewrite into variants ........ multi-query (LLM / heuristic / taxonomy)
-  → embed + FAISS top RETRIEVE_K .. per variant, fused by max-cosine
-  → filter MIN_SCORE
+  → dense FAISS (RETRIEVE_K) ..... per variant, fused by max-cosine
+  → BM25 sparse (optional) ....... rare exact tokens (API names, codes)
+  → Reciprocal Rank Fusion ....... merge dense + BM25 rankings
+  → filter MIN_SCORE (dense path)
   → cross-encoder rerank .......... max score per chunk across all variants
+  → overview demote ............... soft-penalize TOC / chapter intros
   → MMR diversity rerank .......... λ·relevance − (1−λ)·redundancy
   → hard cosine dedup ............. drop chunks ≥ MMR_DEDUP_THRESHOLD to a kept chunk
   → text dedupe ................... drop exact / high Jaccard overlap passages
@@ -444,10 +450,14 @@ query
   → answer validation ............. verify citations; disclaimer if unsupported
 ```
 
+- **Hybrid BM25 + dense** lifts rare identifiers that embeddings under-rank, then
+  RRF merges both lists before the cross-encoder.
 - **Query rewriting** lifts recall by retrieving for several phrasings, then
   fuses the pools (each chunk keeps its best cosine score).
 - **MMR + hard dedup** keeps relevant chunks while suppressing near-duplicates
   in embedding space; **text dedupe** catches copy-paste boilerplate MMR misses.
+- **Overview demotion** soft-penalizes chapter intros / TOC / wrap-ups so
+  instructional pages can enter `TOP_K`.
 - **Context grouping** presents same-document chunks together in reading order,
   trims overlapping text (sentence + character boundary), and preserves each
   chunk's `[n]` citation marker.
@@ -592,6 +602,40 @@ python scripts/ingest_eval_corpus.py --file ~/Downloads/"Amazon EC2 Instance Typ
 
 python scripts/run_eval.py --dataset eval/dataset.multidoc.json --output eval/report.multidoc.json --mode gemini --no-rewrite-llm
 ```
+
+**FastAPI multi-doc eval** (3 books already uploadable via the UI):
+
+| Eval filename (must match registry) | Source |
+| --- | --- |
+| `Mastering_FastAPI_with_Python.pdf` | Mastering FastAPI with Python |
+| `fastapi_tutorial.pdf` | TutorialsPoint FastAPI tutorial |
+| `Building Python Web APIs with FastAPI.pdf` | Packt — Building Python Web APIs with FastAPI |
+
+Dataset: `eval/dataset.fastapi.json` (**22 cases**: 17 answerable + 5 refusal / scoped-refuse).
+
+```bash
+# List expected FastAPI filenames
+python scripts/ingest_eval_corpus.py --corpus fastapi --list-expected
+
+# Optional re-ingest with exact eval names (if you renamed files):
+# python scripts/ingest_eval_corpus.py --file ~/Downloads/Mastering_FastAPI_with_Python.pdf --as Mastering_FastAPI_with_Python.pdf
+# …repeat for the other two…
+
+# Run eval (same pipeline as EC2). Prefer scoping is already in the JSON.
+python scripts/run_eval.py \
+  --dataset eval/dataset.fastapi.json \
+  --output eval/report.fastapi.json \
+  --mode gemini \
+  --no-rewrite-llm
+
+# Or one case at a time:
+python scripts/run_eval.py --dataset eval/dataset.fastapi.json --output eval/report.fastapi.json \
+  --case-id mastering-cors --mode gemini --append -v --no-rewrite-llm
+```
+
+> Tip: answerable cases set `document_filenames` to the FastAPI PDF(s) so EC2
+> chunks still in your index do not pollute retrieval. Out-of-corpus refuse
+> cases (Helm / BigQuery) search the whole index.
 
 **Latest multi-doc report** (`eval/report.multidoc.json`, Gemini, `top_k=3`, 17 cases):
 

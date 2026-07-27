@@ -36,6 +36,17 @@ DEFAULT_CORPUS = (
     ("ec2-types.pdf", "Amazon EC2 Instance Types"),
 )
 
+# Filenames must match ``document_filenames`` in eval/dataset.fastapi.json
+# (use the original PDF names already uploaded in the UI, or --as to rename).
+FASTAPI_CORPUS = (
+    ("Mastering_FastAPI_with_Python.pdf", "Mastering FastAPI with Python"),
+    ("fastapi_tutorial.pdf", "TutorialsPoint FastAPI tutorial"),
+    (
+        "Building Python Web APIs with FastAPI.pdf",
+        "Building Python Web APIs with FastAPI (Packt)",
+    ),
+)
+
 
 def _delete_by_filename(orch, filename: str) -> None:
     for record in orch.registry.list():
@@ -88,11 +99,19 @@ def main() -> int:
         action="store_true",
         help="Print expected corpus filenames and exit.",
     )
+    parser.add_argument(
+        "--corpus",
+        choices=("ec2", "fastapi"),
+        default="ec2",
+        help="Which expected corpus to list / auto-load from --corpus-dir.",
+    )
     args = parser.parse_args()
 
+    expected = FASTAPI_CORPUS if args.corpus == "fastapi" else DEFAULT_CORPUS
+
     if args.list_expected:
-        for filename, label in DEFAULT_CORPUS:
-            print(f"  {filename:28s}  {label}")
+        for filename, label in expected:
+            print(f"  {filename:45s}  {label}")
         return 0
 
     orch = get_orchestrator()
@@ -104,7 +123,7 @@ def main() -> int:
             return 1
         pairs.extend(zip(args.file, args.as_name))
     else:
-        for filename, _label in DEFAULT_CORPUS:
+        for filename, _label in expected:
             path = args.corpus_dir / filename
             if path.exists():
                 pairs.append((path, filename))
@@ -115,7 +134,7 @@ def main() -> int:
             file=sys.stderr,
         )
         print("Expected:", file=sys.stderr)
-        for filename, label in DEFAULT_CORPUS:
+        for filename, label in expected:
             print(f"  {filename} ({label})", file=sys.stderr)
         return 1
 
